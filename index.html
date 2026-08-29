@@ -203,17 +203,22 @@ function setupFilters(){
 }
 
 function photoHTML(m){
-  if(m.foto && /^https?:\/\//i.test(m.foto)){
+  if(!m.foto){
+    return `<div class="avatar">👤</div>`;
+  }
 
-    let foto = m.foto;
+  let foto = String(m.foto).trim();
 
-    const match = foto.match(/\/d\/([^/]+)/);
+  // Converte links do Google Drive para link direto
+  const match = foto.match(/\/d\/([^/]+)/);
 
-    if(match){
-      foto = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
-    }
+  if(match){
+    const id = match[1];
+    foto = `https://drive.google.com/uc?export=view&id=${id}`;
+  }
 
-    return `<img src="${escapeHTML(foto)}" alt="${escapeHTML(m.nome)}">`;
+  if(/^https?:\/\//i.test(foto)){
+    return `<img src="${foto}" alt="${escapeHTML(m.nome)}">`;
   }
 
   return `<div class="avatar">👤</div>`;
