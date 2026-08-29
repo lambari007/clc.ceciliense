@@ -1,0 +1,25 @@
+PORTAL CLC CECILIENSE — VERSÃO PREMIUM
+
+Esta versão foi redesenhada no estilo do modelo aprovado:
+• verde escuro e verde militar
+• dourado/oliva
+• identidade rústica e tradicionalista
+• logo oficial em destaque
+• busca por nome
+• filtros automáticos por categoria e cidade
+• cards dos filiados com foto e status
+• ficha individual ao clicar no filiado
+
+A fonte de dados já está conectada à planilha pública do Google Planilhas.
+
+IMPORTANTE:
+Mantenha na planilha publicada somente dados públicos.
+O site reconhece automaticamente colunas com nomes como:
+Nome / Nome Completo / Filiado
+Data de Filiação
+Status
+Categoria
+Cidade
+Foto
+
+Para fotos no Google Drive, use links compartilhados publicamente.

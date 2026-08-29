@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLC Ceciliense | Clube de Laço Ceciliense</title>
+<style>
+:root{
+ --bg:#061006; --bg2:#0b190d; --panel:#0c180d; --panel2:#102213;
+ --green:#526e23; --olive:#7b8f2a; --gold:#c4a64e; --cream:#e9e4d5;
+ --text:#f5f1e7; --muted:#b9bea9; --line:rgba(196,166,78,.34);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(circle at 75% 5%,#17331a 0%,transparent 30%),linear-gradient(180deg,#061006,#091509 45%,#061006);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.2;background:repeating-linear-gradient(90deg,transparent 0 70px,rgba(255,255,255,.02) 71px 72px)}
+a{color:inherit;text-decoration:none}
+.top{position:sticky;top:0;z-index:10;background:rgba(5,14,6,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{max-width:1300px;margin:auto;padding:10px 26px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:260px}
+.brand img{width:66px;height:66px;object-fit:cover;border-radius:12px}
+.brand b{display:block;font-size:13px;letter-spacing:1.8px;color:var(--cream)}
+.brand strong{display:block;font-size:28px;letter-spacing:1px}
+.menu{display:flex;gap:30px;font-weight:bold;font-size:13px;letter-spacing:1px;color:#d8d5c9}
+.menu a:hover{color:var(--gold)} .associate{border:1px solid var(--gold);background:linear-gradient(135deg,#8a752c,#c4a64e);color:#101408;padding:13px 18px;border-radius:7px;font-weight:bold;font-size:12px;white-space:nowrap}
+.hero{max-width:1300px;margin:auto;min-height:570px;padding:70px 26px 45px;display:grid;grid-template-columns:1fr 1.1fr;align-items:center;gap:35px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-140px;top:0;width:520px;height:520px;border:1px solid rgba(196,166,78,.12);border-radius:50%;box-shadow:0 0 0 50px rgba(82,110,35,.03),0 0 0 110px rgba(82,110,35,.02);pointer-events:none}
+.kicker{color:var(--gold);letter-spacing:5px;font-weight:bold;margin-bottom:18px}
+.hero h1{font-family:Georgia,serif;font-size:clamp(45px,7vw,88px);line-height:.88;margin:0;color:var(--cream);text-shadow:0 4px 0 #172014}
+.hero h1 span{display:block;font-size:.58em;letter-spacing:4px;margin-bottom:8px}
+.hero p{font-size:18px;line-height:1.7;color:var(--muted);max-width:560px}
+.motto{font-size:22px!important;color:#a7b94b!important;font-weight:bold;letter-spacing:3px;max-width:600px!important}
+.cta{display:inline-flex;align-items:center;gap:12px;margin-top:18px;padding:16px 25px;border:1px solid var(--gold);border-radius:7px;font-weight:bold;letter-spacing:1px;background:rgba(0,0,0,.22)}
+.cta:hover{background:rgba(196,166,78,.1)}
+.hero-logo{position:relative;z-index:1;text-align:center}
+.hero-logo img{width:min(500px,90%);filter:drop-shadow(0 25px 30px rgba(0,0,0,.6));border-radius:50px}
+.section{max-width:1180px;margin:0 auto 22px;padding:0 26px}
+.searchbox{background:linear-gradient(135deg,rgba(18,37,18,.98),rgba(7,18,8,.98));border:1px solid var(--gold);border-radius:18px;padding:28px;box-shadow:0 20px 45px rgba(0,0,0,.28)}
+.title{text-align:center;font-family:Georgia,serif;font-size:34px;margin:0;color:var(--cream)} .subtitle{text-align:center;color:#a5af70;margin:8px 0 22px}
+.filters{display:grid;grid-template-columns:2fr 1.2fr 1.2fr auto;gap:14px}
+input,select,button{font:inherit} input,select{width:100%;background:#071007;color:var(--text);border:1px solid #354d32;border-radius:8px;padding:16px}
+button.search{border:0;border-radius:8px;background:linear-gradient(135deg,#6e8421,#b59a3e);color:#101406;padding:0 28px;font-weight:bold;cursor:pointer}
+.feature-head{display:flex;align-items:center;justify-content:space-between;margin:35px 0 16px;gap:20px}
+.feature-head h2{margin:0;font-family:Georgia,serif;font-size:30px} .viewall{border:1px solid var(--gold);padding:12px 17px;border-radius:7px;font-size:12px;font-weight:bold}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+.card{background:linear-gradient(180deg,#0d1b0d,#071007);border:1px solid #344b2e;border-radius:13px;padding:18px;text-align:center;transition:.2s;cursor:pointer}
+.card:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+.photo{width:130px;height:130px;border-radius:50%;overflow:hidden;margin:0 auto 14px;border:2px solid var(--gold);background:radial-gradient(circle,#31482e,#0a120a);display:grid;place-items:center;font-size:45px}
+.photo img{width:100%;height:100%;object-fit:cover} .card h3{margin:0 0 9px;font-size:18px}
+.status{display:inline-block;padding:6px 12px;border-radius:5px;font-size:11px;font-weight:bold;margin:3px 0 10px}
+.status.ativo{background:#29491d;color:#d8f4a5;border:1px solid #6e9a37} .status.inativo{background:#572019;color:#ffd2ca;border:1px solid #a84232}
+.meta{text-align:left;border-top:1px solid rgba(196,166,78,.13);padding-top:9px;color:#c5c7b7;font-size:13px;line-height:1.8}
+.empty{grid-column:1/-1;text-align:center;padding:45px;color:var(--muted);border:1px dashed #40533d;border-radius:12px}
+footer{margin-top:45px;border-top:1px solid var(--line);background:#071007}
+.foot{max-width:1300px;margin:auto;padding:32px 26px;display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:35px}
+.foot-brand{display:flex;gap:15px} .foot-brand img{width:82px;height:82px;object-fit:cover;border-radius:12px}
+.foot h3{margin-top:0;color:var(--cream)} .foot p,.foot li{color:var(--muted);line-height:1.7;font-size:14px} .foot ul{padding-left:16px;margin:0}
+.bottom{border-top:1px solid var(--line);padding:14px 26px;text-align:center;color:#c5b46f;font-size:12px;letter-spacing:1px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:20px;z-index:20} .modal.show{display:flex}
+.modal-box{max-width:520px;width:100%;background:#0b160c;border:1px solid var(--gold);border-radius:16px;overflow:hidden;position:relative}
+.modal-box .photo{width:180px;height:180px;margin:28px auto 12px} .modal-content{padding:10px 30px 30px;text-align:center} .close{position:absolute;right:12px;top:10px;background:#0009;border:1px solid var(--gold);color:#fff;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer}
+@media(max-width:900px){.menu{display:none}.hero{grid-template-columns:1fr;text-align:center;padding-top:45px;min-height:auto}.hero p{margin-left:auto;margin-right:auto}.filters{grid-template-columns:1fr 1fr}button.search{min-height:52px}.brand strong{font-size:20px}.foot{grid-template-columns:1fr}}
+@media(max-width:560px){.nav{padding:8px 14px}.brand{min-width:0}.brand img{width:52px;height:52px}.brand b{font-size:10px}.brand strong{font-size:17px}.associate{padding:10px;font-size:10px}.hero h1{font-size:55px}.section{padding:0 14px}.filters{grid-template-columns:1fr}.hero{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header class="top"><nav class="nav">
+ <a class="brand" href="#"><img src="logo-clc.jpeg"><span><b>CLUBE DE LAÇO</b><strong>CECILIENSE</strong></span></a>
+ <div class="menu"><a href="#">INÍCIO</a><a href="#clube">O CLUBE</a><a href="#filiados">FILIADOS</a><a href="#eventos">EVENTOS</a><a href="#contato">CONTATO</a></div>
+ <a class="associate" href="#filiados">👤 ÁREA DO ASSOCIADO</a>
+</nav></header>
+
+<section class="hero" id="clube">
+ <div>
+  <div class="kicker">SANTA CECÍLIA • SC</div>
+  <h1><span>CLUBE DE LAÇO</span>CECILIENSE</h1>
+  <p class="motto">TRADIÇÃO QUE NOS UNE, PAIXÃO QUE NOS MOVE!</p>
+  <p>Um espaço para valorizar nossos laçadores, preservar nossas raízes e construir um futuro ainda mais forte para o laço em Santa Cecília.</p>
+  <a class="cta" href="#filiados">➤ CONHEÇA NOSSOS FILIADOS</a>
+ </div>
+ <div class="hero-logo"><img src="logo-clc.jpeg" alt="Logo Clube de Laço Ceciliense"></div>
+</section>
+
+<section class="section" id="filiados">
+ <div class="searchbox">
+  <h2 class="title">✦ CONSULTE NOSSOS FILIADOS ✦</h2>
+  <p class="subtitle">Pesquise por nome, categoria ou cidade</p>
+  <div class="filters">
+   <input id="q" placeholder="Digite o nome do laçador...">
+   <select id="category"><option value="">Todas as categorias</option></select>
+   <select id="city"><option value="">Todas as cidades</option></select>
+   <button class="search" onclick="render()">⌕ PESQUISAR</button>
+  </div>
+ </div>
+
+ <div class="feature-head"><h2>FILIADOS EM DESTAQUE</h2><a class="viewall" href="#filiados">👥 VER TODOS OS FILIADOS</a></div>
+ <div class="grid" id="grid"></div>
+</section>
+
+<footer id="contato"><div class="foot">
+ <div class="foot-brand"><img src="logo-clc.jpeg"><div><h3>CLUBE DE LAÇO CECILIENSE</h3><p>Fortalecendo o laço, valorizando tradições e construindo um futuro ainda mais forte.</p></div></div>
+ <div><h3>LINKS RÁPIDOS</h3><ul><li>Início</li><li>O Clube</li><li>Filiados</li><li>Eventos</li></ul></div>
+ <div><h3>FALE CONOSCO</h3><p>📍 Santa Cecília - Santa Catarina</p><p>🐎 Tradição, amizade, respeito e união.</p></div>
+</div><div class="bottom">CLUBE DE LAÇO CECILIENSE • TRADIÇÃO ★ AMIZADE ★ RESPEITO ★ UNIÃO</div></footer>
+
+<div class="modal" id="modal"><div class="modal-box"><button class="close" onclick="closeModal()">×</button><div id="modalPhoto"></div><div class="modal-content" id="modalBody"></div></div></div>
+
+<script>
+const GOOGLE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQJPrY8SwHG0yrWDRCO0J5A2iuWE-yC8VKOPUdawq5r5bjlZ7r-sgD6uHTTRqjfUw/pub?output=csv";
+let membros=[];
+
+function key(obj, names){
+ for(const n of names){ const k=Object.keys(obj).find(x=>x.toLowerCase().trim()===n); if(k!==undefined)return obj[k]||""; }
+ return "";
+}
+function parseCSV(text){
+ const rows=[];let row=[],cell="",q=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i], n=text[i+1];
+  if(c=='"'){if(q&&n=='"'){cell+='"';i++}else q=!q;}
+  else if(c==','&&!q){row.push(cell);cell="";}
+  else if((c=='\n'||c=='\r')&&!q){if(c=='\r'&&n=='\n')i++;row.push(cell);rows.push(row);row=[];cell="";}
+  else cell+=c;
+ }
+ if(cell.length||row.length){row.push(cell);rows.push(row)}
+ const heads=(rows.shift()||[]).map(x=>x.trim());
+ return rows.filter(r=>r.some(x=>String(x).trim())).map(r=>{
+  const o={};heads.forEach((h,i)=>o[h]=r[i]||"");
+  return {
+   nome:key(o,["nome","nome completo","filiado"]),
+   filiacao:key(o,["data de filiação","data de filiacao","filiação","filiacao"]),
+   status:key(o,["status","situação","situacao"]),
+   categoria:key(o,["categoria","modalidade","modalidade/categoria"]),
+   cidade:key(o,["cidade","município","municipio"]),
+   foto:key(o,["foto","foto url","imagem","link da foto"])
+  };
+ }).filter(x=>x.nome);
+}
+function normalizePhoto(url){
+ if(!url)return "";
+ const id=url.match(/[-\w]{25,}/);
+ if(url.includes("drive.google.com")&&id)return "https://drive.google.com/thumbnail?id="+id[0]+"&sz=w800";
+ return url;
+}
+function statusClass(s){return String(s).toLowerCase().includes("ativo")&&!String(s).toLowerCase().includes("inativo")?"ativo":"inativo";}
+function photo(m, large=false){
+ const url=normalizePhoto(m.foto);
+ return `<div class="photo"${large?' style="width:180px;height:180px"':''}>${url?`<img src="${url}" onerror="this.parentElement.innerHTML='👤'">`:"👤"}</div>`;
+}
+function unique(values){return [...new Set(values.filter(Boolean).map(x=>String(x).trim()))].sort((a,b)=>a.localeCompare(b));}
+function setupFilters(){
+ const cat=document.getElementById("category"), city=document.getElementById("city");
+ unique(membros.map(x=>x.categoria)).forEach(v=>cat.add(new Option(v,v)));
+ unique(membros.map(x=>x.cidade)).forEach(v=>city.add(new Option(v,v)));
+}
+function render(){
+ const q=document.getElementById("q").value.toLowerCase().trim(), c=document.getElementById("category").value, city=document.getElementById("city").value;
+ const list=membros.filter(m=>{
+  const all=(m.nome+" "+m.categoria+" "+m.cidade).toLowerCase();
+  return (!q||all.includes(q))&&(!c||m.categoria===c)&&(!city||m.cidade===city);
+ });
+ const grid=document.getElementById("grid");
+ grid.innerHTML=list.length?list.map((m,i)=>`
+ <article class="card" onclick="openMember(${membros.indexOf(m)})">
+   ${photo(m)}<h3>${m.nome}</h3>
+   <span class="status ${statusClass(m.status)}">${m.status||"SEM STATUS"}</span>
+   <div class="meta">🏆 ${m.categoria||"Categoria não informada"}<br>📍 ${m.cidade||"Cidade não informada"}<br>📅 ${m.filiacao||"Data não informada"}</div>
+ </article>`).join(""):`<div class="empty">Nenhum filiado encontrado.</div>`;
+}
+function openMember(i){
+ const m=membros[i];document.getElementById("modalPhoto").innerHTML=photo(m,true);
+ document.getElementById("modalBody").innerHTML=`<h2>${m.nome}</h2><span class="status ${statusClass(m.status)}">${m.status||"SEM STATUS"}</span><p>🏆 <b>Categoria:</b> ${m.categoria||"Não informada"}</p><p>📍 <b>Cidade:</b> ${m.cidade||"Não informada"}</p><p>📅 <b>Filiado desde:</b> ${m.filiacao||"Não informada"}</p>`;
+ document.getElementById("modal").classList.add("show");
+}
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+async function load(){
+ try{const r=await fetch(GOOGLE_SHEET_CSV); if(!r.ok)throw new Error(); membros=parseCSV(await r.text()); setupFilters(); render();}
+ catch(e){document.getElementById("grid").innerHTML='<div class="empty">Não foi possível carregar os filiados. Verifique se a planilha continua publicada.</div>';}
+}
+document.getElementById("q").addEventListener("input",render);
+document.getElementById("category").addEventListener("change",render);
+document.getElementById("city").addEventListener("change",render);
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+load();
+</script>
+</body>
+</html>
