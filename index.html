@@ -174,6 +174,7 @@ function openMember(i){
 function closeModal(){document.getElementById("modal").classList.remove("show")}
 async function load(){
   try{
+
     const url = GOOGLE_SHEET_CSV + "&t=" + Date.now();
 
     const r = await fetch(url);
@@ -184,11 +185,11 @@ async function load(){
 
     const texto = await r.text();
 
-    console.log("CSV recebido:", texto);
+    console.log("CSV RECEBIDO:", texto);
 
     membros = parseCSV(texto);
 
-    console.log("Membros encontrados:", membros);
+    console.log("MEMBROS ENCONTRADOS:", membros);
 
     setupFilters();
     render();
@@ -198,9 +199,8 @@ async function load(){
     console.error("ERRO AO CARREGAR:", e);
 
     document.getElementById("grid").innerHTML =
-      '<div class="empty">Erro ao carregar os filiados: ' +
-      e.message +
-      '</div>';
+      '<div class="empty">Erro ao carregar os filiados.</div>';
+
   }
 }
 document.getElementById("q").addEventListener("input",render);
