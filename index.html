@@ -162,8 +162,19 @@ function setupFilters(){
 
 function photoHTML(m){
   if(m.foto && /^https?:\/\//i.test(m.foto)){
-    return `<img src="${escapeHTML(m.foto)}" alt="${escapeHTML(m.nome)}" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=avatar>👤</div>'">`;
+
+    let foto = m.foto;
+
+    // Transforma links do Google Drive em link direto da imagem
+    const match = foto.match(/\/d\/([^/]+)/);
+
+    if(match){
+      foto = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+
+    return `<img src="${escapeHTML(foto)}" alt="${escapeHTML(m.nome)}">`;
   }
+
   return `<div class="avatar">👤</div>`;
 }
 
