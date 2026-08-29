@@ -67,7 +67,11 @@ footer{text-align:center;padding:18px;color:#f0ead6;font-size:13px;background:rg
 // ABA CADASTRO publicada como CSV
 const GOOGLE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQJPrY8SwHG0yrWDRCO0J5A2iuWE-yC8VKOPUdawq5r5bjlZ7r-sgD6uHTTRqjfUw/pub?gid=644112690&single=true&output=csv";
 
+// Atualização automática: busca novamente a planilha sem usar cache do navegador.
+const AUTO_REFRESH_MS = 60000; // 1 minuto
 let membros = [];
+let ultimoConteudo = "";
+let carregando = false;
 
 function norm(v){
   return String(v ?? "")
@@ -254,32 +258,51 @@ function openModal(m){
   document.getElementById("modal").classList.add("show");
 }
 
-async function load(){
+async function load(silencioso = false){
+  if(carregando) return;
+  carregando = true;
   const status = document.getElementById("status");
   const grid = document.getElementById("grid");
 
   try{
-    status.textContent = "Carregando filiados...";
+    if(!silencioso) status.textContent = "Carregando filiados...";
     const separator = GOOGLE_SHEET_CSV.includes("?") ? "&" : "?";
-    const url = GOOGLE_SHEET_CSV + separator + "t=" + Date.now();
+    // Timestamp + número aleatório evitam que navegador/CDN reutilizem uma resposta antiga.
+    const url = GOOGLE_SHEET_CSV + separator + "t=" + Date.now() + "&r=" + Math.random().toString(36).slice(2);
 
-    const r = await fetch(url, {cache:"no-store"});
+    const r = await fetch(url, {
+      cache:"no-store",
+      headers:{"Cache-Control":"no-cache, no-store, max-age=0", "Pragma":"no-cache"}
+    });
     if(!r.ok) throw new Error("Erro HTTP " + r.status);
 
     const texto = await r.text();
-    membros = parseCSV(texto);
+    const novosMembros = parseCSV(texto);
 
-    if(!membros.length){
+    if(!novosMembros.length){
       throw new Error("A planilha foi carregada, mas nenhum nome foi encontrado. O site tentou reconhecer automaticamente o separador e o cabeçalho. Verifique se a aba publicada ainda é a de Cadastro e se existe uma coluna de Nome.");
     }
 
-    setupFilters();
-    render();
+    const mudou = texto !== ultimoConteudo;
+    membros = novosMembros;
+    ultimoConteudo = texto;
+
+    if(mudou || !silencioso){
+      setupFilters();
+      render();
+    }
+
+    const agora = new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+    status.textContent = `${membros.length} filiado(s) encontrado(s) • Atualizado às ${agora}`;
 
   }catch(e){
     console.error(e);
-    status.textContent = "Erro ao carregar";
-    grid.innerHTML = `<div class="empty"><b>Não foi possível carregar os filiados.</b><br><br>${escapeHTML(e.message)}<br><br>Verifique se a aba Cadastro continua publicada como CSV.</div>`;
+    if(!silencioso || !membros.length){
+      status.textContent = "Erro ao carregar";
+      grid.innerHTML = `<div class="empty"><b>Não foi possível carregar os filiados.</b><br><br>${escapeHTML(e.message)}<br><br>Verifique se a aba Cadastro continua publicada como CSV.</div>`;
+    }
+  }finally{
+    carregando = false;
   }
 }
 
@@ -292,6 +315,14 @@ document.getElementById("modal").addEventListener("click",e=>{
 });
 
 load();
+
+// Atualiza automaticamente enquanto o site estiver aberto.
+setInterval(() => load(true), AUTO_REFRESH_MS);
+
+// Ao voltar para a aba, busca novamente os dados mais recentes.
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible") load(true);
+});
 </script>
 </body>
 </html>
