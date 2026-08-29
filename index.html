@@ -173,6 +173,9 @@ function openMember(i){
 }
 function closeModal(){document.getElementById("modal").classList.remove("show")}
 async function load(){
+
+  alert("A função LOAD está funcionando!");
+
   try{
 
     const url = GOOGLE_SHEET_CSV + "&t=" + Date.now();
