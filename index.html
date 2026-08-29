@@ -173,36 +173,34 @@ function openMember(i){
 }
 function closeModal(){document.getElementById("modal").classList.remove("show")}
 async function load(){
+    try{
 
-  alert("A função LOAD está funcionando!");
+        const url = GOOGLE_SHEET_CSV + "&t=" + Date.now();
 
-  try{
+        const r = await fetch(url);
 
-    const url = GOOGLE_SHEET_CSV + "&t=" + Date.now();
+        if(!r.ok){
+            throw new Error("Erro HTTP: " + r.status);
+        }
 
-    const r = await fetch(url);
+        const texto = await r.text();
 
-    if(!r.ok){
-      throw new Error("Erro HTTP: " + r.status);
+        console.log("CSV recebido:", texto);
+
+        membros = parseCSV(texto);
+
+        setupFilters();
+        render();
+
+    }catch(e){
+
+        console.error("ERRO AO CARREGAR:", e);
+
+        document.getElementById("grid").innerHTML = `
+            <div class="empty">
+                ERRO: ${e.message}
+            </div>`;
     }
-
-    const texto = await r.text();
-
-    membros = parseCSV(texto);
-
-    document.getElementById("grid").innerHTML =
-      `<div class="empty">
-        CSV carregado! Registros encontrados: ${membros.length}
-      </div>`;
-
-  }catch(e){
-
-    document.getElementById("grid").innerHTML =
-      `<div class="empty">
-        ERRO: ${e.message}
-      </div>`;
-
-  }
 }
 document.getElementById("q").addEventListener("input",render);
 document.getElementById("category").addEventListener("change",render);
