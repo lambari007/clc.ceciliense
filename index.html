@@ -81,17 +81,23 @@ function norm(v){
 
 // Parser CSV que aceita vírgulas, ponto e vírgula, aspas e quebras de linha dentro de campos
 function parseCSV(text){
+  // Detecta automaticamente o separador usado pela publicação do Google Planilhas.
+  const sample = String(text || "").replace(/^\uFEFF/, "");
+  const firstLine = sample.split(/\r?\n/).find(l => l.trim()) || "";
+  const separators = [",", ";", "\t"];
+  const sep = separators.sort((a,b) => (firstLine.split(b).length - firstLine.split(a).length))[0];
+
   const rows = [];
   let row = [], field = "", quoted = false;
 
-  for(let i=0;i<text.length;i++){
-    const c = text[i];
-    const n = text[i+1];
+  for(let i=0;i<sample.length;i++){
+    const c = sample[i];
+    const n = sample[i+1];
 
     if(c === '"'){
       if(quoted && n === '"'){ field += '"'; i++; }
       else quoted = !quoted;
-    }else if(c === ',' && !quoted){
+    }else if(c === sep && !quoted){
       row.push(field); field = "";
     }else if((c === '\n' || c === '\r') && !quoted){
       if(c === '\r' && n === '\n') i++;
@@ -107,20 +113,27 @@ function parseCSV(text){
 
   if(rows.length < 2) return [];
 
-  const headers = rows[0].map(norm);
+  // Algumas planilhas possuem uma linha de título antes do cabeçalho.
+  const headerIndex = rows.findIndex((r, idx) => idx < 10 && r.some(cell => {
+    const h = norm(cell);
+    return h === "nome" || h.includes("nome completo") || h.includes("filiado") || h.includes("associado");
+  }));
+  if(headerIndex < 0) return [];
+
+  const headers = rows[headerIndex].map(norm);
 
   function get(obj, aliases){
     for(const a of aliases){
       const target = norm(a);
-      const idx = headers.findIndex(h => h === target || h.includes(target));
+      const idx = headers.findIndex(h => h === target || h.includes(target) || target.includes(h));
       if(idx >= 0 && obj[idx] != null && String(obj[idx]).trim() !== "") return String(obj[idx]).trim();
     }
     return "";
   }
 
-  return rows.slice(1).map(r => {
+  return rows.slice(headerIndex + 1).map(r => {
     const nome = get(r,["nome completo","nome","filiado","associado"]);
-    const id = get(r,["id associado","id","codigo"]);
+    const id = get(r,["id associado","id","codigo","código"]);
     const nascimento = get(r,["data de nascimento","nascimento"]);
     const filiacao = get(r,["data de filiacao","data de filiação","filiacao","filiação"]);
     const status = get(r,["status","situacao","situação"]) || "Ativo";
@@ -128,11 +141,9 @@ function parseCSV(text){
     const cidade = get(r,["cidade","municipio","município"]);
     const foto = get(r,["foto url","link da foto","foto","imagem","url da foto"]);
     const sexo = get(r,["sexo"]);
-
     return {id,nome,nascimento,filiacao,status,categoria,cidade,foto,sexo};
-  }).filter(x => x.nome);
+  }).filter(x => x.nome && norm(x.nome) !== "nome" && norm(x.nome) !== "nome completo");
 }
-
 function escapeHTML(v){
   return String(v ?? "").replace(/[&<>"']/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
@@ -259,7 +270,7 @@ async function load(){
     membros = parseCSV(texto);
 
     if(!membros.length){
-      throw new Error("A planilha foi carregada, mas nenhum nome foi encontrado. Verifique a aba Cadastro e o cabeçalho 'Nome Completo'.");
+      throw new Error("A planilha foi carregada, mas nenhum nome foi encontrado. O site tentou reconhecer automaticamente o separador e o cabeçalho. Verifique se a aba publicada ainda é a de Cadastro e se existe uma coluna de Nome.");
     }
 
     setupFilters();
