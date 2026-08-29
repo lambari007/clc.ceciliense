@@ -209,16 +209,31 @@ function photoHTML(m){
 
   let foto = String(m.foto).trim();
 
-  // Converte links do Google Drive para link direto
-  const match = foto.match(/\/d\/([^/]+)/);
+  // Procura o ID da imagem em vários formatos do Google Drive
+  let id = null;
 
-  if(match){
-    const id = match[1];
-    foto = `https://drive.google.com/uc?export=view&id=${id}`;
+  let match = foto.match(/\/d\/([^/?]+)/);
+  if(match) id = match[1];
+
+  if(!id){
+    match = foto.match(/[?&]id=([^&]+)/);
+    if(match) id = match[1];
+  }
+
+  // Se encontrou um ID do Drive, usa o endereço de miniatura
+  if(id){
+    foto = `https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
   }
 
   if(/^https?:\/\//i.test(foto)){
-    return `<img src="${foto}" alt="${escapeHTML(m.nome)}">`;
+    return `
+      <img 
+        src="${foto}" 
+        alt="${escapeHTML(m.nome)}"
+        loading="lazy"
+        onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=avatar>👤</div>';"
+      >
+    `;
   }
 
   return `<div class="avatar">👤</div>`;
