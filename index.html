@@ -165,11 +165,10 @@ function photoHTML(m){
 
     let foto = m.foto;
 
-    // Transforma links do Google Drive em link direto da imagem
     const match = foto.match(/\/d\/([^/]+)/);
 
     if(match){
-      foto = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      foto = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
     }
 
     return `<img src="${escapeHTML(foto)}" alt="${escapeHTML(m.nome)}">`;
