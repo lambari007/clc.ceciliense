@@ -189,8 +189,11 @@ async function load(){
 
         membros = parseCSV(texto);
 
-        setupFilters();
-        render();
+       document.getElementById("grid").innerHTML = `
+<div class="empty">
+CSV carregado com sucesso!<br>
+Registros encontrados: ${membros.length}
+</div>`;
 
     }catch(e){
 
