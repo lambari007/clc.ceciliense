@@ -557,15 +557,23 @@ function parseCSV(text){
   return rows.slice(headerIndex + 1).map(r => {
     const nome = get(r,["nome completo","nome","filiado","associado"]);
     const id = get(r,["id associado","id","codigo","código"]);
-    const nascimento = get(r,["data de nascimento","nascimento"]);
-    const filiacao = get(r,["data de filiacao","data de filiação","filiacao","filiação"]);
-    const status = get(r,["status","situacao","situação"]) || "Ativo";
-    const categoria = get(r,["categoria","modalidade"]);
+    const sexo = get(r,["sexo","gênero","genero"]);
+    const cpf = get(r,["cpf"]);
+    const nascimento = get(r,["data de nascimento","nascimento","dt nascimento"]);
+    const idade = get(r,["anos/idade","anos idade","idade"]);
+    const telefone = get(r,["telefone","celular","fone"]);
+    const whatsapp = get(r,["whatsapp","whats app"]);
     const cidade = get(r,["cidade","municipio","município"]);
+    const estado = get(r,["estado","uf"]);
+    const endereco = get(r,["endereço","endereco","rua","rua / endereço","rua / endereco"]);
+    const bairro = get(r,["bairro"]);
+    const filiacao = get(r,["data de filiacao","data de filiação","filiacao","filiação"]);
+    const categoria = get(r,["categoria","modalidade"]);
+    const status = get(r,["status","situacao","situação"]) || "Ativo";
+    const observacoes = get(r,["observações","observacoes","observação","observacao"]);
     const foto = get(r,["foto url","link da foto","foto","imagem","url da foto"]);
-    const sexo = get(r,["sexo"]);
     const armadas = get(r,["armadas","n de armadas","numero de armadas","número de armadas","pontos","pontuacao","pontuação"]);
-    return {id,nome,nascimento,filiacao,status,categoria,cidade,foto,sexo,armadas};
+    return {id,nome,sexo,cpf,nascimento,idade,telefone,whatsapp,cidade,estado,endereco,bairro,filiacao,categoria,status,observacoes,foto,armadas};
   }).filter(x => x.nome && norm(x.nome) !== "nome" && norm(x.nome) !== "nome completo");
 }
 function escapeHTML(v){
@@ -800,7 +808,7 @@ function render(){
   const city = document.getElementById("city").value;
 
   const lista = membros.filter(m => {
-    const searchable = norm([m.nome,m.categoria,m.cidade,m.status,m.id].join(" "));
+    const searchable = norm([m.id,m.nome,m.sexo,m.cpf,m.nascimento,m.idade,m.telefone,m.whatsapp,m.cidade,m.estado,m.endereco,m.bairro,m.filiacao,m.categoria,m.status,m.observacoes].join(" "));
     return (!q || searchable.includes(q)) &&
            (!cat || m.categoria === cat) &&
            (!city || m.cidade === city);
@@ -841,9 +849,18 @@ function openModal(m){
     ${m.id ? `<div class="detail"><b>ID Associado:</b> ${escapeHTML(m.id)}</div>` : ""}
     ${m.status ? `<div class="detail"><b>Status:</b> ${escapeHTML(m.status)}</div>` : ""}
     ${m.categoria ? `<div class="detail"><b>Categoria:</b> ${escapeHTML(m.categoria)}</div>` : ""}
-    ${m.cidade ? `<div class="detail"><b>Cidade:</b> ${escapeHTML(m.cidade)}</div>` : ""}
-    ${m.filiacao ? `<div class="detail"><b>Data de filiação:</b> ${escapeHTML(m.filiacao)}</div>` : ""}
+    ${m.sexo ? `<div class="detail"><b>Sexo:</b> ${escapeHTML(m.sexo)}</div>` : ""}
+    ${m.cpf ? `<div class="detail"><b>CPF:</b> ${escapeHTML(m.cpf)}</div>` : ""}
     ${m.nascimento ? `<div class="detail"><b>Data de nascimento:</b> ${escapeHTML(m.nascimento)}</div>` : ""}
+    ${m.idade ? `<div class="detail"><b>Idade:</b> ${escapeHTML(m.idade)}</div>` : ""}
+    ${m.telefone ? `<div class="detail"><b>Telefone:</b> ${escapeHTML(m.telefone)}</div>` : ""}
+    ${m.whatsapp ? `<div class="detail"><b>WhatsApp:</b> ${escapeHTML(m.whatsapp)}</div>` : ""}
+    ${m.cidade ? `<div class="detail"><b>Cidade:</b> ${escapeHTML(m.cidade)}</div>` : ""}
+    ${m.estado ? `<div class="detail"><b>Estado:</b> ${escapeHTML(m.estado)}</div>` : ""}
+    ${m.endereco ? `<div class="detail"><b>Endereço:</b> ${escapeHTML(m.endereco)}</div>` : ""}
+    ${m.bairro ? `<div class="detail"><b>Bairro:</b> ${escapeHTML(m.bairro)}</div>` : ""}
+    ${m.filiacao ? `<div class="detail"><b>Data de filiação:</b> ${escapeHTML(m.filiacao)}</div>` : ""}
+    ${m.observacoes ? `<div class="detail"><b>Observações:</b> ${escapeHTML(m.observacoes)}</div>` : ""}
   `;
   document.getElementById("modal").classList.add("show");
 }
