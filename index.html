@@ -936,6 +936,8 @@ function showFormMessage(text, type){
   box.textContent=text; box.className="form-message show "+type;
 }
 function digits(v){ return String(v||"").replace(/\D/g,""); }
+function upperText(v){ return String(v ?? "").trim().toLocaleUpperCase("pt-BR"); }
+
 
 document.getElementById("openJoin").addEventListener("click", openJoinModal);
 document.getElementById("closeJoin").addEventListener("click", closeJoinModal);
@@ -954,6 +956,16 @@ document.getElementById("jtelefone").addEventListener("input", e=>{
   e.target.value=v.replace(/-$/,"");
 });
 
+// Mantém os campos textuais do formulário visualmente em LETRAS MAIÚSCULAS.
+["jnome","jcidade","jrua","jbairro"].forEach(id => {
+  const field = document.getElementById(id);
+  if(field) field.addEventListener("input", e => {
+    const start = e.target.selectionStart;
+    e.target.value = upperText(e.target.value);
+    if(start != null) e.target.setSelectionRange(start, start);
+  });
+});
+
 document.getElementById("joinForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const endpoint=String(FILIACAO_API_URL||"").trim();
@@ -964,15 +976,15 @@ document.getElementById("joinForm").addEventListener("submit", async e=>{
 
   const form=e.currentTarget;
   const data={
-    nome: form.nome.value.trim(),
-    sexo: form.sexo.value,
+    nome: upperText(form.nome.value),
+    sexo: upperText(form.sexo.value),
     cpf: form.cpf.value.trim(),
     nascimento: form.nascimento.value,
     telefone: form.telefone.value.trim(),
-    cidade: form.cidade.value.trim(),
-    estado: form.estado.value,
-    rua: form.rua.value.trim(),
-    bairro: form.bairro.value.trim(),
+    cidade: upperText(form.cidade.value),
+    estado: upperText(form.estado.value),
+    rua: upperText(form.rua.value),
+    bairro: upperText(form.bairro.value),
     status: "Inativo",
     origem: "Site CLC",
     termos: true

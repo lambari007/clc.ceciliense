@@ -62,15 +62,17 @@ function doPost(e) {
     const rowNum = sheet.getLastRow() + 1;
     const row = new Array(headers.length).fill('');
 
-    setField_(row, headers, aliases.nome, data.nome);
-    setField_(row, headers, aliases.sexo, data.sexo);
+    // Padroniza os dados textuais enviados pelo site em LETRAS MAIÚSCULAS.
+    // Assim, o cadastro fica igual ao lançamento manual.
+    setField_(row, headers, aliases.nome, upperText_(data.nome));
+    setField_(row, headers, aliases.sexo, upperText_(data.sexo));
     setField_(row, headers, aliases.cpf, data.cpf);
     setField_(row, headers, aliases.nascimento, data.nascimento);
     setField_(row, headers, aliases.telefone, data.telefone);
-    setField_(row, headers, aliases.cidade, data.cidade);
-    setField_(row, headers, aliases.estado, data.estado);
-    setField_(row, headers, aliases.rua, data.rua);
-    setField_(row, headers, aliases.bairro, data.bairro);
+    setField_(row, headers, aliases.cidade, upperText_(data.cidade));
+    setField_(row, headers, aliases.estado, upperText_(data.estado));
+    setField_(row, headers, aliases.rua, upperText_(data.rua));
+    setField_(row, headers, aliases.bairro, upperText_(data.bairro));
     setField_(row, headers, aliases.status, 'Inativo');
     setField_(row, headers, aliases.origem, 'Site CLC');
     setField_(row, headers, aliases.termos, 'Li e concordo');
@@ -186,6 +188,10 @@ function findColumn_(headers, aliases) {
 function setField_(row, headers, aliases, value) {
   const col = findColumn_(headers, aliases);
   if (col !== -1) row[col] = value;
+}
+
+function upperText_(value) {
+  return String(value == null ? '' : value).trim().toUpperCase();
 }
 
 function prettyHeader_(field) {
