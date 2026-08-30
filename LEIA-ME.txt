@@ -1,13 +1,9 @@
-CORREÇÃO EXATA ID/NOME
+VERSÃO CORRIGIDA
 
-Sua planilha Cadastro usa:
-A = ID Associado
-B = Nome Completo
+A URL do Google Apps Script foi atualizada para a implantação atual (/exec).
 
-Esta versão força o Apps Script a ler exatamente:
-ID -> coluna ID Associado
-NOME -> coluna Nome Completo
+Se ainda aparecer Failed to fetch, confira na implantação do Apps Script:
+- Executar como: Eu
+- Quem tem acesso: Qualquer pessoa
 
-IMPORTANTE: substitua o código do Google Apps Script e faça uma NOVA IMPLANTAÇÃO do Web App. Depois abra o site e atualize com Ctrl+F5.
-
-O index.html e o ranking foram mantidos da versão original.
+Depois de salvar/implantar o Apps Script, aguarde alguns segundos e atualize o site com Ctrl+F5.
