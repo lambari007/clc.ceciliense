@@ -1,25 +1,11 @@
-PORTAL CLC CECILIENSE — SINCRONIZAÇÃO CORRIGIDA
+CORREÇÃO DO NOME DOS FILIADOS
 
-Esta versão corrige o problema em que o site e a aba Cadastro mostravam pessoas diferentes.
+Esta versão corrige especificamente o problema em que o ID (ex.: CLC-T001) aparece no lugar do nome.
 
-COMO AGORA FUNCIONA
-• O site não lê mais a publicação CSV do Google Planilhas.
-• O site lê diretamente a aba Cadastro pelo mesmo Google Apps Script usado para receber novas filiações.
-• Inclusões feitas pelo site aparecem na planilha e passam a aparecer também no portal.
-• Exclusões e alterações feitas diretamente na aba Cadastro passam a ser a fonte oficial do site.
-• Atualização automática: a cada 1 minuto e quando a página volta a ficar ativa.
-• CPF, telefone e endereço não são enviados para a leitura pública do site.
+1. Substitua o index.html no GitHub por este arquivo.
+2. No Google Apps Script da mesma planilha, substitua o código pelo arquivo “Google Apps Script - FILIACAO.gs”.
+3. Salve.
+4. Faça uma NOVA IMPLANTAÇÃO do Web App.
+5. No site, atualize usando Ctrl+F5 (ou limpe o cache).
 
-PASSO OBRIGATÓRIO
-1. Abra a planilha Controle_Filiacao_CLC.
-2. Vá em Extensões > Apps Script.
-3. Substitua o código pelo arquivo “Google Apps Script - FILIACAO.gs” desta versão.
-4. Salve.
-5. Clique em Implantar > Gerenciar implantações.
-6. Edite a implantação atual do Aplicativo da Web ou crie uma nova.
-7. Selecione uma NOVA VERSÃO do código e implante.
-8. Execute como: sua conta.
-9. Quem tem acesso: qualquer pessoa.
-10. Se a URL /exec mudar, atualize FILIACAO_API_URL no index.html.
-
-IMPORTANTE: alterar o código no Apps Script sem atualizar a implantação não atualiza o Web App que o site consulta.
+A correção principal está no Apps Script: a coluna de NOME agora é localizada com prioridade e uma coluna contendo ID/Código é explicitamente proibida de ser usada como nome.

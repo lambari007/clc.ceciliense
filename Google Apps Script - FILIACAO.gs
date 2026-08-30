@@ -104,10 +104,14 @@ function doGet() {
     const values = sheet.getDataRange().getDisplayValues();
     if (!values.length) return json_({ ok:true, records:[], empty:true });
 
-    const headers = values[0].map(normalize_);
+    // Procura a linha real de cabeçalhos. Isso evita pegar uma linha de título
+    // ou qualquer linha anterior como se fosse o cabeçalho da planilha.
+    const headerRow = findHeaderRow_(values);
+    const headers = values[headerRow].map(normalize_);
+
     const aliases = {
-      id: ['id associado','codigo associado','código associado','id','codigo','código'],
-      nome: ['nome completo','nome associado','nome do associado','nome do filiado','nome do lacador','nome do laçador','nome','filiado','lacador','laçador'],
+      id: ['id associado','codigo associado','código associado','id do associado','id','codigo','código'],
+      nome: ['nome completo','nome completo do associado','nome do associado','nome associado','nome do filiado','nome do lacador','nome do laçador','nome','filiado','lacador','laçador'],
       sexo: ['sexo','genero','gênero'],
       nascimento: ['data de nascimento','nascimento','dt nascimento'],
       idade: ['anos/idade','anos idade','idade'],
@@ -121,34 +125,100 @@ function doGet() {
       armadas: ['armadas','n de armadas','numero de armadas','número de armadas','pontos','pontuacao','pontuação']
     };
 
+    // Localiza primeiro as colunas. Para NOME existe uma regra especial:
+    // uma coluna com "id" ou "codigo" NUNCA pode ser usada como nome.
+    const cols = {};
+    Object.keys(aliases).forEach(field => {
+      cols[field] = field === 'nome'
+        ? findNameColumn_(headers, aliases.nome)
+        : findColumn_(headers, aliases[field]);
+    });
+
     function value_(row, field) {
-      const col = findColumn_(headers, aliases[field] || []);
-      return col === -1 ? '' : String(row[col] || '').trim();
+      const col = cols[field];
+      return col === -1 || col == null ? '' : String(row[col] || '').trim();
     }
 
-    // Retorna somente informações públicas. CPF, telefone e endereço não saem no site.
-    const records = values.slice(1)
-      .map(row => ({
-        id: value_(row,'id'),
-        nome: value_(row,'nome'),
-        sexo: value_(row,'sexo'),
-        nascimento: value_(row,'nascimento'),
-        idade: value_(row,'idade'),
-        cidade: value_(row,'cidade'),
-        estado: value_(row,'estado'),
-        filiacao: value_(row,'filiacao'),
-        categoria: value_(row,'categoria'),
-        status: value_(row,'status') || 'Ativo',
-        observacoes: value_(row,'observacoes'),
-        foto: value_(row,'foto'),
-        armadas: value_(row,'armadas')
-      }))
+    const records = values.slice(headerRow + 1)
+      .map(row => {
+        const id = value_(row,'id');
+        let nome = value_(row,'nome');
+
+        // Segurança extra: se por algum motivo a coluna escolhida para NOME
+        // contiver exatamente o ID, tenta localizar outra coluna de nome.
+        if (nome && id && normalize_(nome) === normalize_(id)) {
+          const alternatives = findAllNameColumns_(headers, aliases.nome);
+          for (const col of alternatives) {
+            const candidate = String(row[col] || '').trim();
+            if (candidate && normalize_(candidate) !== normalize_(id)) {
+              nome = candidate;
+              break;
+            }
+          }
+        }
+
+        return {
+          id: id,
+          nome: nome,
+          sexo: value_(row,'sexo'),
+          nascimento: value_(row,'nascimento'),
+          idade: value_(row,'idade'),
+          cidade: value_(row,'cidade'),
+          estado: value_(row,'estado'),
+          filiacao: value_(row,'filiacao'),
+          categoria: value_(row,'categoria'),
+          status: value_(row,'status') || 'Ativo',
+          observacoes: value_(row,'observacoes'),
+          foto: value_(row,'foto'),
+          armadas: value_(row,'armadas')
+        };
+      })
+      // Não envia linhas sem um nome de pessoa. Assim um ID sozinho nunca vira cartão.
       .filter(item => item.nome && normalize_(item.nome) !== 'nome' && normalize_(item.nome) !== 'nome completo');
 
     return json_({ ok:true, records:records, updatedAt:new Date().toISOString() });
   } catch (err) {
     return json_({ ok:false, message:String(err && err.message ? err.message : err) });
   }
+}
+
+function findHeaderRow_(values) {
+  const limit = Math.min(values.length, 10);
+  let bestRow = 0, bestScore = -1;
+  for (let r = 0; r < limit; r++) {
+    const hs = values[r].map(normalize_);
+    let score = 0;
+    if (hs.some(h => h.includes('nome') || h.includes('filiado') || h.includes('associado'))) score += 4;
+    if (hs.some(h => h.includes('id') || h.includes('codigo') || h.includes('código'))) score += 2;
+    if (hs.some(h => h.includes('cidade'))) score += 1;
+    if (hs.some(h => h.includes('status'))) score += 1;
+    if (score > bestScore) { bestScore = score; bestRow = r; }
+  }
+  return bestRow;
+}
+
+function isIdHeader_(h) {
+  h = normalize_(h);
+  return h === 'id' || h.includes('id associado') || h.includes('codigo') || h.includes('código');
+}
+
+function findAllNameColumns_(headers, aliases) {
+  const normalizedAliases = aliases.map(normalize_);
+  const exact = [];
+  const partial = [];
+
+  headers.forEach((h, idx) => {
+    if (!h || isIdHeader_(h)) return;
+    if (normalizedAliases.includes(h)) exact.push(idx);
+    else if (h.includes('nome') || h.includes('filiado') || h.includes('associado')) partial.push(idx);
+  });
+
+  return exact.concat(partial.filter(i => !exact.includes(i)));
+}
+
+function findNameColumn_(headers, aliases) {
+  const all = findAllNameColumns_(headers, aliases);
+  return all.length ? all[0] : -1;
 }
 
 function normalize_(value) {

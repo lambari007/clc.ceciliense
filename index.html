@@ -886,7 +886,15 @@ async function load(silencioso = false){
 
     const result = await r.json();
     if(result.ok === false) throw new Error(result.message || "Não foi possível ler o Cadastro.");
-    const novosMembros = Array.isArray(result.records) ? result.records : [];
+    const novosMembros = (Array.isArray(result.records) ? result.records : [])
+      .map(item => {
+        const nome = String(item?.nome || "").trim();
+        const id = String(item?.id || "").trim();
+        // O ID nunca deve substituir o nome no cartão.
+        if(nome && id && norm(nome) === norm(id)) item.nome = "";
+        return item;
+      })
+      .filter(item => String(item?.nome || "").trim());
     const assinatura = JSON.stringify(novosMembros);
 
     const mudou = assinatura !== ultimoConteudo;
