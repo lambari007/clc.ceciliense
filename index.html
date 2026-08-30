@@ -41,6 +41,22 @@ footer{text-align:center;padding:18px;color:#f0ead6;font-size:13px;background:rg
 .partner-contact{margin-top:13px;font-size:13px;color:#687168}
 .partner-contact a{color:#1f6b3a;font-weight:800;text-decoration:none}
 .partners-empty{grid-column:1/-1;background:rgba(255,255,255,.96);border-radius:16px;padding:35px;text-align:center;color:#667067}
+
+
+/* ===== NOVA FILIAÇÃO ===== */
+.join-box{max-width:900px;margin:0 auto 24px;padding:22px;border-radius:18px;background:linear-gradient(135deg,rgba(5,35,20,.94),rgba(18,68,37,.92));border:1px solid rgba(210,190,120,.45);box-shadow:0 12px 32px rgba(0,0,0,.22);text-align:center;color:#fff}
+.join-box h2{margin:0 0 8px;font-size:24px;color:#f4efdc}.join-box p{margin:0 auto 16px;max-width:700px;color:#e4e8df;line-height:1.5}
+.join-btn,.submit-btn{border:0;border-radius:11px;padding:14px 22px;font-size:15px;font-weight:900;cursor:pointer;background:var(--gold);color:#172316;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.join-btn:hover,.submit-btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.form-modal{z-index:20;overflow:auto;align-items:flex-start}.form-modal.show{display:flex}.form-box{position:relative;background:#fff;border-radius:18px;max-width:760px;width:100%;margin:24px auto;padding:0;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.38)}
+.form-head{padding:22px 24px;background:linear-gradient(90deg,var(--green),var(--green2));color:#fff}.form-head h2{margin:0 0 6px}.form-head p{margin:0;color:#dce7dd;font-size:14px;line-height:1.45}
+.form-body{padding:24px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.form-field{display:flex;flex-direction:column;gap:6px}.form-field.full{grid-column:1/-1}.form-field label{font-weight:800;color:#274331;font-size:13px}.form-field input,.form-field select{padding:12px}
+.terms{margin-top:20px;padding:16px;border:1px solid #e3e0d4;border-radius:12px;background:#f8f7f1}.terms-scroll{max-height:240px;overflow:auto;padding-right:8px;font-size:13px;line-height:1.55;color:#404a43}.terms h3{margin:0 0 10px;color:var(--green)}
+.agree{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;font-weight:800;color:#26352c}.agree input{width:18px;height:18px;flex:0 0 18px;margin-top:1px}
+.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.cancel-btn{border:1px solid #c9cec8;background:#fff;color:#304036;border-radius:10px;padding:13px 18px;font-weight:800;cursor:pointer}
+.form-message{margin-top:14px;padding:12px;border-radius:10px;display:none;font-size:14px;font-weight:700}.form-message.show{display:block}.form-message.error{background:#fdeaea;color:#9b3434}.form-message.success{background:#e8f4ea;color:#216238}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr}.form-field.full{grid-column:auto}.form-box{margin:10px auto;border-radius:14px}.form-body{padding:18px}.form-head{padding:18px}.form-actions{flex-direction:column}.form-actions button{width:100%}}
+
 @media(max-width:700px){
   .partners-grid{grid-template-columns:1fr;gap:14px}
   .partner-logo{height:115px}
@@ -337,6 +353,12 @@ footer{text-align:center;padding:18px;color:#f0ead6;font-size:13px;background:rg
   <section id="filiadosView" class="view">
   <div class="section-title">FILIADOS EM DESTAQUE</div>
 
+  <div class="join-box">
+    <h2>QUER FAZER PARTE DO CLC?</h2>
+    <p>Faça sua pré-filiação online. Após o envio, nossa equipe entrará em contato pelo telefone informado para orientar sobre a confirmação e o pagamento.</p>
+    <button id="openJoin" class="join-btn">🏇 QUERO ME FILIAR</button>
+  </div>
+
   <div class="filters">
     <input id="q" placeholder="🔎 Pesquise por nome...">
     <select id="category"><option value="">Todas as categorias</option></select>
@@ -355,6 +377,49 @@ footer{text-align:center;padding:18px;color:#f0ead6;font-size:13px;background:rg
     </div>
   </section>
 </main>
+
+
+<div id="joinModal" class="modal form-modal">
+  <div class="form-box">
+    <button id="closeJoin" class="close" aria-label="Fechar">×</button>
+    <div class="form-head">
+      <h2>Pré-filiação CLC</h2>
+      <p>Preencha seus dados. Sua solicitação ficará como <b>INATIVA</b> até a confirmação do pagamento pela equipe do CLC.</p>
+    </div>
+    <form id="joinForm" class="form-body">
+      <div class="form-grid">
+        <div class="form-field full"><label for="jnome">Nome completo *</label><input id="jnome" name="nome" required></div>
+        <div class="form-field"><label for="jsexo">Sexo *</label><select id="jsexo" name="sexo" required><option value="">Selecione</option><option>Masculino</option><option>Feminino</option><option>Prefiro não informar</option></select></div>
+        <div class="form-field"><label for="jcpf">CPF *</label><input id="jcpf" name="cpf" inputmode="numeric" placeholder="000.000.000-00" required></div>
+        <div class="form-field"><label for="jnascimento">Data de nascimento *</label><input id="jnascimento" name="nascimento" type="date" required></div>
+        <div class="form-field"><label for="jtelefone">Telefone / WhatsApp *</label><input id="jtelefone" name="telefone" inputmode="tel" placeholder="(00) 00000-0000" required></div>
+        <div class="form-field"><label for="jcidade">Cidade *</label><input id="jcidade" name="cidade" required></div>
+        <div class="form-field"><label for="jestado">Estado (UF) *</label><select id="jestado" name="estado" required><option value="">UF</option><option>SC</option><option>PR</option><option>RS</option><option>SP</option><option>Outro</option></select></div>
+        <div class="form-field"><label for="jrua">Rua / endereço *</label><input id="jrua" name="rua" required></div>
+        <div class="form-field"><label for="jbairro">Bairro *</label><input id="jbairro" name="bairro" required></div>
+      </div>
+
+      <div class="terms">
+        <h3>Termos da filiação</h3>
+        <div class="terms-scroll">
+          <p><b>1. Mensalidade:</b> a filiação ao CLC possui mensalidade de <b>R$ 50,00</b>. O filiado poderá optar pelo pagamento mensal ou pelo pagamento anual integral, conforme orientação da organização.</p>
+          <p><b>2. Benefícios:</b> o CLC buscará sempre oferecer aos filiados benefícios que superem o valor pago pela filiação. Para utilizar e manter os benefícios, o filiado deverá estar devidamente em dia com suas obrigações.</p>
+          <p><b>3. Cancelamento e valores pagos:</b> caso o filiado decida não permanecer no CLC após algum período — inclusive após o terceiro mês — os valores já pagos referentes ao período de participação não serão ressarcidos.</p>
+          <p><b>4. Conselho de ética e conduta:</b> o CLC preza pelos bons costumes, respeito, tradição e boa convivência. O grupo possui conselho de ética e reserva-se o direito de analisar condutas incompatíveis com esses princípios e, quando necessário, encerrar a participação de integrantes que não estejam de acordo com os valores e tradições defendidos pelo CLC.</p>
+          <p><b>5. Privacidade dos dados:</b> os dados fornecidos nesta solicitação serão de acesso restrito ao CLC. Na plataforma pública poderão ser exibidos apenas <b>nome, cidade, data de nascimento e ranqueamento</b>, conforme aplicável. CPF, telefone, endereço e demais informações não serão exibidos publicamente pelo CLC.</p>
+          <p><b>6. Ativação:</b> o envio deste formulário representa uma solicitação de pré-filiação. O cadastro será recebido inicialmente com status <b>INATIVO</b>. A ativação ocorrerá manualmente após o contato da equipe e a confirmação das condições e do pagamento.</p>
+        </div>
+        <label class="agree"><input id="jterms" type="checkbox" required> <span>Li e concordo com os termos da filiação e com o tratamento dos meus dados conforme informado acima.</span></label>
+      </div>
+
+      <div id="formMessage" class="form-message"></div>
+      <div class="form-actions">
+        <button type="button" id="cancelJoin" class="cancel-btn">Cancelar</button>
+        <button id="sendJoin" type="submit" class="submit-btn">ENVIAR SOLICITAÇÃO</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <footer>Clube de Laço Ceciliense • Cadastro atualizado pela planilha oficial</footer>
 
@@ -415,6 +480,11 @@ function renderParceiros(){
 
 // ABA CADASTRO publicada como CSV
 const GOOGLE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQJPrY8SwHG0yrWDRCO0J5A2iuWE-yC8VKOPUdawq5r5bjlZ7r-sgD6uHTTRqjfUw/pub?gid=644112690&single=true&output=csv";
+
+// COLE AQUI A URL DO WEB APP DO GOOGLE APPS SCRIPT (arquivo Google Apps Script - FILIACAO.gs).
+// Sem essa URL, o formulário abre normalmente, mas não envia para a planilha.
+const FILIACAO_API_URL = "COLE_AQUI_A_URL_DO_WEB_APP";
+
 
 // Atualização automática: busca novamente a planilha sem usar cache do navegador.
 const AUTO_REFRESH_MS = 60000; // 1 minuto
@@ -836,6 +906,84 @@ document.getElementById("modal").addEventListener("click",e=>{
 
 document.querySelectorAll(".nav-tab").forEach(btn => {
   btn.addEventListener("click", () => setView(btn.dataset.view));
+});
+
+
+function openJoinModal(){
+  document.getElementById("joinModal").classList.add("show");
+  document.body.style.overflow="hidden";
+}
+function closeJoinModal(){
+  document.getElementById("joinModal").classList.remove("show");
+  document.body.style.overflow="";
+}
+function showFormMessage(text, type){
+  const box=document.getElementById("formMessage");
+  box.textContent=text; box.className="form-message show "+type;
+}
+function digits(v){ return String(v||"").replace(/\D/g,""); }
+
+document.getElementById("openJoin").addEventListener("click", openJoinModal);
+document.getElementById("closeJoin").addEventListener("click", closeJoinModal);
+document.getElementById("cancelJoin").addEventListener("click", closeJoinModal);
+document.getElementById("joinModal").addEventListener("click", e=>{ if(e.target.id==="joinModal") closeJoinModal(); });
+
+document.getElementById("jcpf").addEventListener("input", e=>{
+  let v=digits(e.target.value).slice(0,11);
+  v=v.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2");
+  e.target.value=v;
+});
+document.getElementById("jtelefone").addEventListener("input", e=>{
+  let v=digits(e.target.value).slice(0,11);
+  if(v.length>10) v=v.replace(/^(\d{2})(\d{5})(\d{0,4}).*/,"($1) $2-$3");
+  else v=v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/,"($1) $2-$3");
+  e.target.value=v.replace(/-$/,"");
+});
+
+document.getElementById("joinForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const endpoint=String(FILIACAO_API_URL||"").trim();
+  if(!endpoint || endpoint.includes("COLE_AQUI")){
+    showFormMessage("O formulário está pronto, mas falta conectar a URL do Google Apps Script para enviar os dados à sua planilha.", "error");
+    return;
+  }
+
+  const form=e.currentTarget;
+  const data={
+    nome: form.nome.value.trim(),
+    sexo: form.sexo.value,
+    cpf: form.cpf.value.trim(),
+    nascimento: form.nascimento.value,
+    telefone: form.telefone.value.trim(),
+    cidade: form.cidade.value.trim(),
+    estado: form.estado.value,
+    rua: form.rua.value.trim(),
+    bairro: form.bairro.value.trim(),
+    status: "Inativo",
+    origem: "Site CLC",
+    termos: true
+  };
+
+  const btn=document.getElementById("sendJoin");
+  btn.disabled=true; btn.textContent="ENVIANDO...";
+  document.getElementById("formMessage").className="form-message";
+
+  try{
+    // text/plain evita preflight CORS e funciona com Web App do Apps Script.
+    const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(data)});
+    const txt=await r.text();
+    let result={};
+    try{ result=JSON.parse(txt); }catch(_){}
+    if(!r.ok || result.ok===false) throw new Error(result.message||"Não foi possível registrar a solicitação.");
+    showFormMessage("Solicitação enviada com sucesso! Seu cadastro foi registrado como INATIVO. A equipe do CLC entrará em contato pelo telefone informado.", "success");
+    form.reset();
+    setTimeout(closeJoinModal,3500);
+  }catch(err){
+    console.error(err);
+    showFormMessage("Não foi possível enviar agora. Verifique sua conexão e tente novamente.", "error");
+  }finally{
+    btn.disabled=false; btn.textContent="ENVIAR SOLICITAÇÃO";
+  }
 });
 
 renderParceiros();
