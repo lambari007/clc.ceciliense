@@ -768,8 +768,7 @@ async function loadRanking(silencioso = false){
     const separator = RANKING_CSV_URL.includes("?") ? "&" : "?";
     const url = RANKING_CSV_URL + separator + "t=" + Date.now() + "&r=" + Math.random().toString(36).slice(2);
     const response = await fetch(url, {
-      cache:"no-store",
-      headers:{"Cache-Control":"no-cache, no-store, max-age=0", "Pragma":"no-cache"}
+      cache:"no-store"
     });
     if(!response.ok) throw new Error("Erro HTTP " + response.status);
 
@@ -879,8 +878,7 @@ async function load(silencioso = false){
 
     const r = await fetch(url, {
       method:"GET",
-      cache:"no-store",
-      headers:{"Cache-Control":"no-cache, no-store, max-age=0", "Pragma":"no-cache"}
+      cache:"no-store"
     });
     if(!r.ok) throw new Error("Erro HTTP " + r.status);
 
