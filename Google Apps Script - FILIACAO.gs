@@ -107,7 +107,7 @@ function doGet() {
     const headers = values[0].map(normalize_);
     const aliases = {
       id: ['id associado','codigo associado','código associado','id','codigo','código'],
-      nome: ['nome completo','nome do associado','nome do filiado','nome do laçador','nome','filiado','associado','lacador','laçador'],
+      nome: ['nome completo','nome associado','nome do associado','nome do filiado','nome do lacador','nome do laçador','nome','filiado','lacador','laçador'],
       sexo: ['sexo','genero','gênero'],
       nascimento: ['data de nascimento','nascimento','dt nascimento'],
       idade: ['anos/idade','anos idade','idade'],
@@ -162,13 +162,8 @@ function normalize_(value) {
 
 function findColumn_(headers, aliases) {
   const list = aliases.map(normalize_);
-  // Primeiro procura correspondência EXATA. Isso evita que "ID Associado"
-  // seja confundido com "Nome do Associado" ou outras colunas parecidas.
   let idx = headers.findIndex(h => list.includes(h));
   if (idx !== -1) return idx;
-
-  // Depois procura uma correspondência por conteúdo, priorizando o alias
-  // mais específico e ignorando aliases muito curtos como "id".
   const ordered = list.slice().sort((a,b) => b.length - a.length);
   for (const alias of ordered) {
     if (alias.length < 3) continue;

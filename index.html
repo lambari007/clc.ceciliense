@@ -639,9 +639,10 @@ let ultimoRankingConteudo = "";
 function getRankingValue(row, headers, aliases){
   for(const alias of aliases){
     const target = norm(alias);
-    let idx = headers.findIndex(h => h === target);
-    if(idx < 0 && target.length >= 3) idx = headers.findIndex(h => h.includes(target));
-    if(idx >= 0 && row[idx] != null && String(row[idx]).trim() !== "") return String(row[idx]).trim();
+    const idx = headers.findIndex(h => h === target || h.includes(target));
+    if(idx >= 0 && row[idx] != null && String(row[idx]).trim() !== ""){
+      return String(row[idx]).trim();
+    }
   }
   return "";
 }
@@ -654,94 +655,135 @@ function parseRankingCSV(text){
 
   const rows = [];
   let row = [], field = "", quoted = false;
+
   for(let i=0;i<sample.length;i++){
-    const c=sample[i], n=sample[i+1];
-    if(c === '"'){ if(quoted && n === '"'){ field+='"'; i++; } else quoted=!quoted; }
-    else if(c === sep && !quoted){ row.push(field); field=""; }
-    else if((c === "\n" || c === "\r") && !quoted){
+    const c = sample[i], n = sample[i+1];
+    if(c === '"'){
+      if(quoted && n === '"'){ field += '"'; i++; }
+      else quoted = !quoted;
+    }else if(c === sep && !quoted){
+      row.push(field); field = "";
+    }else if((c === "\n" || c === "\r") && !quoted){
       if(c === "\r" && n === "\n") i++;
       row.push(field);
       if(row.some(x => String(x).trim() !== "")) rows.push(row);
-      row=[]; field="";
-    } else field+=c;
+      row = []; field = "";
+    }else field += c;
   }
   row.push(field);
   if(row.some(x => String(x).trim() !== "")) rows.push(row);
   if(rows.length < 2) return [];
 
-  // Procura o cabeçalho real, inclusive quando a planilha tiver título acima dele.
-  const headerIndex = rows.findIndex((r,idx) => idx < 20 && {
-    const hs=r.map(norm);
-    return hs.some(h => ["laçador","lacador","nome","nome completo"].includes(h)) &&
-           hs.some(h => ["posição","posicao","colocação","colocacao","acertos","positivas","pontos","total"].some(k=>h.includes(k)));
-  });
+  const headerIndex = rows.findIndex((r, idx) => idx < 10 && r.some(cell => {
+    const h = norm(cell);
+    return h.includes("posicao") || h.includes("posição") || h.includes("lacador") || h.includes("laçador");
+  }));
   if(headerIndex < 0) return [];
 
-  const headers=rows[headerIndex].map(norm);
-  const data=rows.slice(headerIndex+1).map((r,index)=>({
-    posicao:getRankingValue(r,headers,["posição","posicao","colocação","colocacao","classificação","classificacao"]),
-    lacador:getRankingValue(r,headers,["laçador","lacador","nome completo","nome do laçador","nome"]),
-    foto:getRankingValue(r,headers,["foto url","link da foto","url da foto","foto","imagem"]),
-    positivas:getRankingValue(r,headers,["positivas","acertos","positiva"]),
-    negativas:getRankingValue(r,headers,["negativas","zeros","erros","negativa"]),
-    total:getRankingValue(r,headers,["total","armadas","pontos"]),
-    percentual:getRankingValue(r,headers,["aproveitamento","percentual","porcentagem","%"])
-  })).filter(x=>x.lacador);
+  const headers = rows[headerIndex].map(norm);
 
-  // Se a posição não vier calculada na planilha, ordena pelo aproveitamento
-  // (ou pontos/acertos) e gera a colocação automaticamente.
-  const number=v=>Number(String(v||"").replace("%","").replace(",",".").replace(/[^\d.-]/g,""))||0;
-  const hasPosition=data.some(x=>number(x.posicao)>0);
-  if(!hasPosition){
-    data.sort((a,b)=>number(b.percentual)-number(a.percentual) || number(b.total)-number(a.total) || number(b.positivas)-number(a.positivas));
-    data.forEach((x,i)=>x.posicao=(i+1)+"º");
-  }else{
-    data.sort((a,b)=>number(a.posicao)-number(b.posicao));
-  }
-  return data;
+  return rows.slice(headerIndex + 1).map((r, index) => ({
+    posicao: getRankingValue(r, headers, ["posição","posicao","colocação","colocacao"]) || String(index + 1) + "º",
+    lacador: getRankingValue(r, headers, ["laçador","lacador","nome","nome completo"]),
+    foto: getRankingValue(r, headers, ["foto","foto url","link da foto","imagem","url da foto"]),
+    positivas: getRankingValue(r, headers, ["positivas","positiva","acertos"]),
+    negativas: getRankingValue(r, headers, ["negativas","negativa","zeros","erros"]),
+    total: getRankingValue(r, headers, ["total","armadas","pontos"]),
+    percentual: getRankingValue(r, headers, ["%","percentual","porcentagem","aproveitamento"])
+  })).filter(x => x.lacador);
 }
 
 function rankingPhotoHTML(r){
   if(!r.foto) return '<div class="rank-avatar">👤</div>';
-  let foto=String(r.foto).trim(), id=null, match=foto.match(/\/d\/([^/?]+)/);
-  if(match) id=match[1];
-  if(!id){ match=foto.match(/[?&]id=([^&]+)/); if(match) id=match[1]; }
-  if(id) foto=`https://drive.google.com/thumbnail?id=${id}&sz=w300`;
-  if(/^https?:\/\//i.test(foto)) return `<img class="rank-photo" src="${foto}" alt="${escapeHTML(r.lacador)}" loading="lazy" onerror="this.outerHTML='<div class=rank-avatar>👤</div>';">`;
+
+  let foto = String(r.foto).trim();
+  let id = null;
+  let match = foto.match(/\/d\/([^/?]+)/);
+  if(match) id = match[1];
+  if(!id){
+    match = foto.match(/[?&]id=([^&]+)/);
+    if(match) id = match[1];
+  }
+  if(id) foto = `https://drive.google.com/thumbnail?id=${id}&sz=w300`;
+
+  if(/^https?:\/\//i.test(foto)){
+    return `<img class="rank-photo" src="${foto}" alt="${escapeHTML(r.lacador)}" loading="lazy" onerror="this.outerHTML='<div class=rank-avatar>👤</div>';">`;
+  }
   return '<div class="rank-avatar">👤</div>';
 }
 
 function renderRanking(){
-  const content=document.getElementById("rankingContent"), note=document.getElementById("rankingNote");
+  const content = document.getElementById("rankingContent");
+  const note = document.getElementById("rankingNote");
+
   if(!ranking.length){
-    note.textContent="O ranking aparecerá automaticamente conforme a planilha RANKING for preenchida.";
-    content.innerHTML=`<div class="rank-empty"><b>🏆 Ranking em preparação</b><br><br>Preencha corretamente a aba <b>RANKING</b> da planilha para os resultados aparecerem aqui.</div>`;
+    note.textContent = "O ranking aparecerá automaticamente conforme a planilha RANKING for preenchida.";
+    content.innerHTML = `<div class="rank-empty"><b>🏆 Ranking em preparação</b><br><br>Preencha a aba <b>RANKING</b> da planilha para os resultados aparecerem aqui.</div>`;
     return;
   }
-  note.textContent=`Classificação atual • ${ranking.length} laçador(es) ranqueado(s)`;
-  content.innerHTML=`<table class="ranking-table"><thead><tr><th>Posição</th><th>Laçador</th><th>Foto</th><th>P/N</th><th>%</th></tr></thead><tbody>${
-    ranking.map((r,index)=>{
-      const posNum=parseInt(String(r.posicao).replace(/\D/g,""),10)||(index+1);
-      const award=posNum<=5 ? '<span class="rank-award" title="'+posNum+'º lugar">🏆</span>' : '<span class="rank-award medal" title="'+posNum+'º lugar">🏅</span>';
-      const pct=r.percentual ? (String(r.percentual).includes("%") ? r.percentual : r.percentual+"%") : "";
-      return `<tr class="${posNum<=5?"top-rank":""}"><td class="place">${award}<br><small>${escapeHTML(posNum+"º")}</small></td><td class="rank-name">${escapeHTML(r.lacador)}</td><td class="rank-photo-cell">${rankingPhotoHTML(r)}</td><td><b>${escapeHTML(r.positivas||"0")}/${escapeHTML(r.negativas||"0")}</b></td><td class="rank-percent">${escapeHTML(pct)}</td></tr>`;
-    }).join("")
-  }</tbody></table>`;
+
+  note.textContent = `Classificação atual • ${ranking.length} laçador(es) ranqueado(s)`;
+  content.innerHTML = `
+    <table class="ranking-table">
+      <thead>
+        <tr>
+          <th>Posição</th>
+          <th>Laçador</th>
+          <th>Foto</th>
+          <th>P/N</th>
+          <th>%</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${ranking.map((r, index) => {
+          const positivas = r.positivas || "0";
+          const negativas = r.negativas || "0";
+          const percentual = r.percentual ? (String(r.percentual).includes("%") ? r.percentual : r.percentual + "%") : "";
+          const posNum = parseInt(String(r.posicao).replace(/\D/g, ""), 10) || (index + 1);
+          const award = posNum <= 5
+            ? `<span class="rank-award" title="${posNum}º lugar">🏆</span>`
+            : `<span class="rank-award medal" title="${posNum}º lugar">🏅</span>`;
+
+          return `
+          <tr class="${posNum <= 8 ? "top-rank" : ""}">
+            <td class="place">${award}<br><small>${escapeHTML(r.posicao)}</small></td>
+            <td class="rank-name">${escapeHTML(r.lacador)}</td>
+            <td class="rank-photo-cell">${rankingPhotoHTML(r)}</td>
+            <td><b>${escapeHTML(positivas)}/${escapeHTML(negativas)}</b></td>
+            <td class="rank-percent">${escapeHTML(percentual)}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`;
 }
 
-async function loadRanking(silencioso=false){
+async function loadRanking(silencioso = false){
   try{
-    const separator=RANKING_CSV_URL.includes("?")?"&":"?";
-    const response=await fetch(RANKING_CSV_URL+separator+"t="+Date.now(),{cache:"no-store"});
-    if(!response.ok) throw new Error("Erro HTTP "+response.status);
-    const texto=await response.text(), novoRanking=parseRankingCSV(texto);
-    if(!novoRanking.length && texto.trim()) throw new Error("Não foi possível reconhecer os cabeçalhos da aba RANKING.");
-    ranking=novoRanking; ultimoRankingConteudo=texto; renderRanking();
+    const separator = RANKING_CSV_URL.includes("?") ? "&" : "?";
+    const url = RANKING_CSV_URL + separator + "t=" + Date.now() + "&r=" + Math.random().toString(36).slice(2);
+    const response = await fetch(url, {
+      cache:"no-store"
+    });
+    if(!response.ok) throw new Error("Erro HTTP " + response.status);
+
+    const texto = await response.text();
+    const novoRanking = parseRankingCSV(texto);
+
+    if(!novoRanking.length && texto.trim()){
+      throw new Error("A planilha RANKING foi carregada, mas não foi possível reconhecer os cabeçalhos.");
+    }
+
+    ranking = novoRanking;
+    ultimoRankingConteudo = texto;
+    renderRanking();
   }catch(e){
-    console.error("Erro ao carregar ranking:",e);
-    document.getElementById("rankingNote").textContent="Erro ao carregar o ranking. Verifique os cabeçalhos e a publicação da aba RANKING.";
+    console.error("Erro ao carregar ranking:", e);
+    if(!silencioso){
+      document.getElementById("rankingNote").textContent = "Erro ao carregar o ranking. Verifique se a aba RANKING continua publicada na web.";
+    }
   }
 }
+
 function setView(view){
   document.getElementById("parceirosView").classList.toggle("hidden", view !== "parceiros");
   document.getElementById("filiadosView").classList.toggle("hidden", view !== "filiados");
@@ -828,10 +870,18 @@ async function load(silencioso = false){
     const separator = endpoint.includes("?") ? "&" : "?";
     const url = endpoint + separator + "t=" + Date.now() + "&r=" + Math.random().toString(36).slice(2);
 
-    const r = await fetch(url, {
-      method:"GET",
-      cache:"no-store"
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let r;
+    try{
+      r = await fetch(url, {
+        method:"GET",
+        cache:"no-store",
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     if(!r.ok) throw new Error("Erro HTTP " + r.status);
 
     const result = await r.json();
