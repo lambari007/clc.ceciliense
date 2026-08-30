@@ -738,11 +738,17 @@ function renderRanking(){
         ${ranking.map((r, index) => {
           const positivas = r.positivas || "0";
           const negativas = r.negativas || "0";
-          const percentual = r.percentual ? (String(r.percentual).includes("%") ? r.percentual : r.percentual + "%") : "";
-          const posNum = parseInt(String(r.posicao).replace(/\D/g, ""), 10) || (index + 1);
-          const award = posNum <= 5
-            ? `<span class="rank-award" title="${posNum}º lugar">🏆</span>`
-            : `<span class="rank-award medal" title="${posNum}º lugar">🏅</span>`;
+          const percentual = r.percentual || "";
+          const posNum = parseInt(String(r.posicao).replace(/\\D/g, ""), 10) || (index + 1);
+          let award = "";
+          if(posNum === 1) award = '<span class="rank-award" title="1º lugar">🏆</span>';
+          else if(posNum === 2) award = '<span class="rank-award" title="2º lugar">🏆</span>';
+          else if(posNum === 3) award = '<span class="rank-award" title="3º lugar">🏆</span>';
+          else if(posNum === 4) award = '<span class="rank-award" title="4º lugar">🏆</span>';
+          else if(posNum === 5) award = '<span class="rank-award" title="5º lugar">🏆</span>';
+          else if(posNum === 6) award = '<span class="rank-award medal" title="6º lugar">🥇</span>';
+          else if(posNum === 7) award = '<span class="rank-award medal" title="7º lugar">🥈</span>';
+          else if(posNum === 8) award = '<span class="rank-award medal" title="8º lugar">🥉</span>';
 
           return `
           <tr class="${posNum <= 8 ? "top-rank" : ""}">
@@ -870,31 +876,15 @@ async function load(silencioso = false){
     const separator = endpoint.includes("?") ? "&" : "?";
     const url = endpoint + separator + "t=" + Date.now() + "&r=" + Math.random().toString(36).slice(2);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    let r;
-    try{
-      r = await fetch(url, {
-        method:"GET",
-        cache:"no-store",
-        signal: controller.signal
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+    const r = await fetch(url, {
+      method:"GET",
+      cache:"no-store"
+    });
     if(!r.ok) throw new Error("Erro HTTP " + r.status);
 
     const result = await r.json();
     if(result.ok === false) throw new Error(result.message || "Não foi possível ler o Cadastro.");
-    const novosMembros = (Array.isArray(result.records) ? result.records : [])
-      .map(item => {
-        const nome = String(item?.nome || "").trim();
-        const id = String(item?.id || "").trim();
-        // O ID nunca deve substituir o nome no cartão.
-        if(nome && id && norm(nome) === norm(id)) item.nome = "";
-        return item;
-      })
-      .filter(item => String(item?.nome || "").trim());
+    const novosMembros = Array.isArray(result.records) ? result.records : [];
     const assinatura = JSON.stringify(novosMembros);
 
     const mudou = assinatura !== ultimoConteudo;

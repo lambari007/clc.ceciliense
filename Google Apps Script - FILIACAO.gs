@@ -102,123 +102,71 @@ function doGet() {
     if (!sheet) throw new Error('A aba "' + ABA_DESTINO + '" não foi encontrada.');
 
     const values = sheet.getDataRange().getDisplayValues();
-    if (!values.length) return json_({ ok:true, records:[], empty:true });
+    if (values.length < 2) return json_({ ok:true, records:[], empty:true });
 
-    // Procura a linha real de cabeçalhos. Isso evita pegar uma linha de título
-    // ou qualquer linha anterior como se fosse o cabeçalho da planilha.
-    const headerRow = findHeaderRow_(values);
-    const headers = values[headerRow].map(normalize_);
+    const headers = values[0].map(normalize_);
 
-    const aliases = {
-      id: ['id associado','codigo associado','código associado','id do associado','id','codigo','código'],
-      nome: ['nome completo','nome completo do associado','nome do associado','nome associado','nome do filiado','nome do lacador','nome do laçador','nome','filiado','lacador','laçador'],
-      sexo: ['sexo','genero','gênero'],
-      nascimento: ['data de nascimento','nascimento','dt nascimento'],
-      idade: ['anos/idade','anos idade','idade'],
-      cidade: ['cidade','municipio','município'],
-      estado: ['estado','uf'],
-      filiacao: ['data de filiacao','data de filiação','filiacao','filiação'],
-      categoria: ['categoria','modalidade'],
-      status: ['status','situação','situacao'],
-      observacoes: ['observações','observacoes','observação','observacao'],
-      foto: ['foto url','link da foto','foto','imagem','url da foto'],
-      armadas: ['armadas','n de armadas','numero de armadas','número de armadas','pontos','pontuacao','pontuação']
+    // ESTA PLANILHA TEM EXATAMENTE ESTES CABEÇALHOS:
+    // A = ID Associado | B = Nome Completo
+    // Primeiro procura a correspondência EXATA para nunca confundir
+    // "ID Associado" com "Nome Completo".
+    function exactColumn_(name) {
+      return headers.indexOf(normalize_(name));
+    }
+    function aliasColumn_(names) {
+      for (const name of names) {
+        const idx = exactColumn_(name);
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    }
+
+    const cols = {
+      id: exactColumn_('ID Associado'),
+      nome: exactColumn_('Nome Completo'),
+      sexo: aliasColumn_(['Sexo']),
+      nascimento: aliasColumn_(['Data de Nascimento','Data de Nascer','Nascimento']),
+      idade: aliasColumn_(['Anos/Idade','Anos Idade','Idade']),
+      cidade: aliasColumn_(['Cidade']),
+      estado: aliasColumn_(['Estado','UF']),
+      filiacao: aliasColumn_(['Data de Filiação','Data de Filiacao','Filiação','Filiacao']),
+      categoria: aliasColumn_(['Categoria','Modalidade']),
+      status: aliasColumn_(['Status','Situação','Situacao']),
+      observacoes: aliasColumn_(['Observações','Observacoes','Observação','Observacao']),
+      foto: aliasColumn_(['Foto URL','Link da Foto','Foto','Imagem','URL da Foto']),
+      armadas: aliasColumn_(['Armadas','N de Armadas','Número de Armadas','Numero de Armadas','Pontos','Pontuação','Pontuacao'])
     };
 
-    // Localiza primeiro as colunas. Para NOME existe uma regra especial:
-    // uma coluna com "id" ou "codigo" NUNCA pode ser usada como nome.
-    const cols = {};
-    Object.keys(aliases).forEach(field => {
-      cols[field] = field === 'nome'
-        ? findNameColumn_(headers, aliases.nome)
-        : findColumn_(headers, aliases[field]);
-    });
+    if (cols.nome === -1) {
+      throw new Error('Não encontrei a coluna "Nome Completo" na aba Cadastro. Cabeçalhos encontrados: ' + headers.join(' | '));
+    }
 
-    function value_(row, field) {
-      const col = cols[field];
+    function value_(row, col) {
       return col === -1 || col == null ? '' : String(row[col] || '').trim();
     }
 
-    const records = values.slice(headerRow + 1)
-      .map(row => {
-        const id = value_(row,'id');
-        let nome = value_(row,'nome');
-
-        // Segurança extra: se por algum motivo a coluna escolhida para NOME
-        // contiver exatamente o ID, tenta localizar outra coluna de nome.
-        if (nome && id && normalize_(nome) === normalize_(id)) {
-          const alternatives = findAllNameColumns_(headers, aliases.nome);
-          for (const col of alternatives) {
-            const candidate = String(row[col] || '').trim();
-            if (candidate && normalize_(candidate) !== normalize_(id)) {
-              nome = candidate;
-              break;
-            }
-          }
-        }
-
-        return {
-          id: id,
-          nome: nome,
-          sexo: value_(row,'sexo'),
-          nascimento: value_(row,'nascimento'),
-          idade: value_(row,'idade'),
-          cidade: value_(row,'cidade'),
-          estado: value_(row,'estado'),
-          filiacao: value_(row,'filiacao'),
-          categoria: value_(row,'categoria'),
-          status: value_(row,'status') || 'Ativo',
-          observacoes: value_(row,'observacoes'),
-          foto: value_(row,'foto'),
-          armadas: value_(row,'armadas')
-        };
-      })
-      // Não envia linhas sem um nome de pessoa. Assim um ID sozinho nunca vira cartão.
-      .filter(item => item.nome && normalize_(item.nome) !== 'nome' && normalize_(item.nome) !== 'nome completo');
+    const records = values.slice(1)
+      .map(row => ({
+        id: value_(row, cols.id),
+        nome: value_(row, cols.nome),
+        sexo: value_(row, cols.sexo),
+        nascimento: value_(row, cols.nascimento),
+        idade: value_(row, cols.idade),
+        cidade: value_(row, cols.cidade),
+        estado: value_(row, cols.estado),
+        filiacao: value_(row, cols.filiacao),
+        categoria: value_(row, cols.categoria),
+        status: value_(row, cols.status) || 'Ativo',
+        observacoes: value_(row, cols.observacoes),
+        foto: value_(row, cols.foto),
+        armadas: value_(row, cols.armadas)
+      }))
+      .filter(item => item.nome);
 
     return json_({ ok:true, records:records, updatedAt:new Date().toISOString() });
   } catch (err) {
     return json_({ ok:false, message:String(err && err.message ? err.message : err) });
   }
-}
-
-function findHeaderRow_(values) {
-  const limit = Math.min(values.length, 10);
-  let bestRow = 0, bestScore = -1;
-  for (let r = 0; r < limit; r++) {
-    const hs = values[r].map(normalize_);
-    let score = 0;
-    if (hs.some(h => h.includes('nome') || h.includes('filiado') || h.includes('associado'))) score += 4;
-    if (hs.some(h => h.includes('id') || h.includes('codigo') || h.includes('código'))) score += 2;
-    if (hs.some(h => h.includes('cidade'))) score += 1;
-    if (hs.some(h => h.includes('status'))) score += 1;
-    if (score > bestScore) { bestScore = score; bestRow = r; }
-  }
-  return bestRow;
-}
-
-function isIdHeader_(h) {
-  h = normalize_(h);
-  return h === 'id' || h.includes('id associado') || h.includes('codigo') || h.includes('código');
-}
-
-function findAllNameColumns_(headers, aliases) {
-  const normalizedAliases = aliases.map(normalize_);
-  const exact = [];
-  const partial = [];
-
-  headers.forEach((h, idx) => {
-    if (!h || isIdHeader_(h)) return;
-    if (normalizedAliases.includes(h)) exact.push(idx);
-    else if (h.includes('nome') || h.includes('filiado') || h.includes('associado')) partial.push(idx);
-  });
-
-  return exact.concat(partial.filter(i => !exact.includes(i)));
-}
-
-function findNameColumn_(headers, aliases) {
-  const all = findAllNameColumns_(headers, aliases);
-  return all.length ? all[0] : -1;
 }
 
 function normalize_(value) {
@@ -232,15 +180,7 @@ function normalize_(value) {
 
 function findColumn_(headers, aliases) {
   const list = aliases.map(normalize_);
-  let idx = headers.findIndex(h => list.includes(h));
-  if (idx !== -1) return idx;
-  const ordered = list.slice().sort((a,b) => b.length - a.length);
-  for (const alias of ordered) {
-    if (alias.length < 3) continue;
-    idx = headers.findIndex(h => h.includes(alias));
-    if (idx !== -1) return idx;
-  }
-  return -1;
+  return headers.findIndex(h => list.includes(h) || list.some(a => h.indexOf(a) !== -1));
 }
 
 function setField_(row, headers, aliases, value) {

@@ -1,11 +1,13 @@
-CORREÇÃO DO NOME DOS FILIADOS
+CORREÇÃO EXATA ID/NOME
 
-Esta versão corrige especificamente o problema em que o ID (ex.: CLC-T001) aparece no lugar do nome.
+Sua planilha Cadastro usa:
+A = ID Associado
+B = Nome Completo
 
-1. Substitua o index.html no GitHub por este arquivo.
-2. No Google Apps Script da mesma planilha, substitua o código pelo arquivo “Google Apps Script - FILIACAO.gs”.
-3. Salve.
-4. Faça uma NOVA IMPLANTAÇÃO do Web App.
-5. No site, atualize usando Ctrl+F5 (ou limpe o cache).
+Esta versão força o Apps Script a ler exatamente:
+ID -> coluna ID Associado
+NOME -> coluna Nome Completo
 
-A correção principal está no Apps Script: a coluna de NOME agora é localizada com prioridade e uma coluna contendo ID/Código é explicitamente proibida de ser usada como nome.
+IMPORTANTE: substitua o código do Google Apps Script e faça uma NOVA IMPLANTAÇÃO do Web App. Depois abra o site e atualize com Ctrl+F5.
+
+O index.html e o ranking foram mantidos da versão original.
