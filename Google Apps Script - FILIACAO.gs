@@ -96,7 +96,59 @@ function doPost(e) {
 }
 
 function doGet() {
-  return json_({ ok:true, service:'CLC Pré-filiação' });
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(ABA_DESTINO);
+    if (!sheet) throw new Error('A aba "' + ABA_DESTINO + '" não foi encontrada.');
+
+    const values = sheet.getDataRange().getDisplayValues();
+    if (!values.length) return json_({ ok:true, records:[], empty:true });
+
+    const headers = values[0].map(normalize_);
+    const aliases = {
+      id: ['id associado','id','codigo','código'],
+      nome: ['nome','nome completo','filiado','associado','lacador','laçador'],
+      sexo: ['sexo','genero','gênero'],
+      nascimento: ['data de nascimento','nascimento','dt nascimento'],
+      idade: ['anos/idade','anos idade','idade'],
+      cidade: ['cidade','municipio','município'],
+      estado: ['estado','uf'],
+      filiacao: ['data de filiacao','data de filiação','filiacao','filiação'],
+      categoria: ['categoria','modalidade'],
+      status: ['status','situação','situacao'],
+      observacoes: ['observações','observacoes','observação','observacao'],
+      foto: ['foto url','link da foto','foto','imagem','url da foto'],
+      armadas: ['armadas','n de armadas','numero de armadas','número de armadas','pontos','pontuacao','pontuação']
+    };
+
+    function value_(row, field) {
+      const col = findColumn_(headers, aliases[field] || []);
+      return col === -1 ? '' : String(row[col] || '').trim();
+    }
+
+    // Retorna somente informações públicas. CPF, telefone e endereço não saem no site.
+    const records = values.slice(1)
+      .map(row => ({
+        id: value_(row,'id'),
+        nome: value_(row,'nome'),
+        sexo: value_(row,'sexo'),
+        nascimento: value_(row,'nascimento'),
+        idade: value_(row,'idade'),
+        cidade: value_(row,'cidade'),
+        estado: value_(row,'estado'),
+        filiacao: value_(row,'filiacao'),
+        categoria: value_(row,'categoria'),
+        status: value_(row,'status') || 'Ativo',
+        observacoes: value_(row,'observacoes'),
+        foto: value_(row,'foto'),
+        armadas: value_(row,'armadas')
+      }))
+      .filter(item => item.nome && normalize_(item.nome) !== 'nome' && normalize_(item.nome) !== 'nome completo');
+
+    return json_({ ok:true, records:records, updatedAt:new Date().toISOString() });
+  } catch (err) {
+    return json_({ ok:false, message:String(err && err.message ? err.message : err) });
+  }
 }
 
 function normalize_(value) {
