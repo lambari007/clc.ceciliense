@@ -54,7 +54,7 @@ PARA ATIVAR O ENVIO PARA A PLANILHA:
 8. Quem tem acesso: qualquer pessoa.
 9. Implante e copie a URL que termina em /exec.
 10. Abra index.html e substitua:
-   const FILIACAO_API_URL = "COLE_AQUI_A_URL_DO_WEB_APP";
+   const FILIACAO_API_URL = "https://script.google.com/macros/s/AKfycbytgj4l5Gf11pJAjMoKmzhi06DplzjXmLHjKyiXAc7KjMAj-EJz-08iuLODvauXxKVnSw/exec";
    pela URL copiada.
 
 IMPORTANTE:
