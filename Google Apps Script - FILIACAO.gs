@@ -229,85 +229,71 @@ function login_(data) {
 function editarFiliado_(data) {
   try {
     const id = String(data.id || '').trim();
-
-    if (!id) {
-      return json_({ ok:false, message:'ID do filiado não informado.' });
-    }
+    if (!id) return json_({ ok:false, message:'ID do filiado não informado.' });
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(ABA_DESTINO);
+    if (!sheet) throw new Error('A aba "' + ABA_DESTINO + '" não foi encontrada.');
 
-    if (!sheet) {
-      throw new Error('A aba "' + ABA_DESTINO + '" não foi encontrada.');
-    }
-
-    // Usa os valores exibidos para comparar o ID exatamente como o site o recebe.
     const values = sheet.getDataRange().getDisplayValues();
-
-    if (values.length < 2) {
-      throw new Error('Nenhum filiado encontrado.');
-    }
+    if (values.length < 2) throw new Error('Nenhum filiado encontrado.');
 
     const headers = values[0].map(normalize_);
-
-    const colunas = {
-      id: headers.indexOf(normalize_('ID Associado')),
-      nome: headers.indexOf(normalize_('Nome Completo')),
-      sexo: headers.indexOf(normalize_('Sexo')),
-      nascimento: headers.indexOf(normalize_('Data de Nascimento')),
-      cidade: headers.indexOf(normalize_('Cidade')),
-      estado: headers.indexOf(normalize_('Estado')),
-      categoria: headers.indexOf(normalize_('Categoria')),
-      status: headers.indexOf(normalize_('Status')),
-      observacoes: headers.indexOf(normalize_('Observações'))
+    const aliases = {
+      id: ['id associado','id','codigo','código','numero associado','número associado'],
+      nome: ['nome completo','nome','filiado','associado'],
+      sexo: ['sexo','genero','gênero'],
+      nascimento: ['data de nascimento','data nascimento','nascimento','data de nascer'],
+      cidade: ['cidade','municipio','município'],
+      estado: ['estado','uf'],
+      categoria: ['categoria','modalidade'],
+      status: ['status','situacao','situação'],
+      observacoes: ['observacoes','observações','observacao','observação']
     };
 
-    if (colunas.id === -1) {
-      throw new Error('Não encontrei a coluna ID Associado.');
-    }
+    const colunas = {};
+    Object.keys(aliases).forEach(key => colunas[key] = findColumn_(headers, aliases[key]));
 
-    const linha = values.findIndex((row, index) => {
-      if (index === 0) return false;
-      const idPlanilha = String(row[colunas.id] || '').trim();
-      return idPlanilha === id;
-    });
+    if (colunas.id === -1) throw new Error('Não encontrei a coluna de ID do associado na aba Cadastro.');
 
-    if (linha === -1) {
-      throw new Error('Filiado não encontrado. ID recebido: ' + id);
+    // Compara o ID de forma segura, inclusive se a planilha tiver números formatados.
+    const idKey = String(id).trim();
+    let linha = -1;
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][colunas.id] || '').trim() === idKey) {
+        linha = i;
+        break;
+      }
     }
+    if (linha === -1) throw new Error('Filiado não encontrado. ID recebido: ' + idKey);
 
     const rowNumber = linha + 1;
+    const updates = [
+      ['nome', upperText_(data.nome)],
+      ['sexo', upperText_(data.sexo)],
+      ['cidade', upperText_(data.cidade)],
+      ['estado', upperText_(data.estado)],
+      ['categoria', upperText_(data.categoria)],
+      ['status', upperText_(data.status)],
+      ['observacoes', upperText_(data.observacoes)]
+    ];
 
-    if (colunas.nome !== -1) {
-      sheet.getRange(rowNumber, colunas.nome + 1).setValue(upperText_(data.nome));
-    }
-
-    if (colunas.sexo !== -1) {
-      sheet.getRange(rowNumber, colunas.sexo + 1).setValue(upperText_(data.sexo));
-    }
+    updates.forEach(([campo, valor]) => {
+      if (colunas[campo] !== -1) sheet.getRange(rowNumber, colunas[campo] + 1).setValue(valor);
+    });
 
     if (colunas.nascimento !== -1 && data.nascimento !== undefined) {
-      sheet.getRange(rowNumber, colunas.nascimento + 1).setValue(data.nascimento);
-    }
-
-    if (colunas.cidade !== -1) {
-      sheet.getRange(rowNumber, colunas.cidade + 1).setValue(upperText_(data.cidade));
-    }
-
-    if (colunas.estado !== -1) {
-      sheet.getRange(rowNumber, colunas.estado + 1).setValue(upperText_(data.estado));
-    }
-
-    if (colunas.categoria !== -1) {
-      sheet.getRange(rowNumber, colunas.categoria + 1).setValue(upperText_(data.categoria));
-    }
-
-    if (colunas.status !== -1) {
-      sheet.getRange(rowNumber, colunas.status + 1).setValue(upperText_(data.status));
-    }
-
-    if (colunas.observacoes !== -1) {
-      sheet.getRange(rowNumber, colunas.observacoes + 1).setValue(upperText_(data.observacoes));
+      const nascimento = String(data.nascimento || '').trim();
+      if (nascimento) {
+        const partes = nascimento.split('-');
+        const valorData = partes.length === 3
+          ? new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]))
+          : nascimento;
+        sheet.getRange(rowNumber, colunas.nascimento + 1).setValue(valorData);
+        if (valorData instanceof Date) sheet.getRange(rowNumber, colunas.nascimento + 1).setNumberFormat('dd/mm/yyyy');
+      } else {
+        sheet.getRange(rowNumber, colunas.nascimento + 1).clearContent();
+      }
     }
 
     SpreadsheetApp.flush();
@@ -315,15 +301,12 @@ function editarFiliado_(data) {
     return json_({
       ok:true,
       message:'Filiado atualizado com sucesso.',
-      id:id
+      id:idKey,
+      updatedAt:new Date().toISOString()
     });
-
   } catch (err) {
     console.error(err);
-    return json_({
-      ok:false,
-      message:String(err && err.message ? err.message : err)
-    });
+    return json_({ ok:false, message:String(err && err.message ? err.message : err) });
   }
 }
 

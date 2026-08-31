@@ -1301,7 +1301,8 @@ async function saveAdminEdit(){
     estado:document.getElementById('adminEditEstado').value.trim(),
     categoria:document.getElementById('adminEditCategoria').value.trim(),
     status:document.getElementById('adminEditStatus').value,
-    observacoes:document.getElementById('adminEditObservacoes').value.trim()
+    observacoes:document.getElementById('adminEditObservacoes').value.trim(),
+    requestId: Date.now() + '-' + Math.random().toString(36).slice(2)
   };
 
   adminSaving=true;
