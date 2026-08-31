@@ -1068,11 +1068,11 @@ function openModal(m){
   document.getElementById("modal").classList.add("show");
 }
 
-async function load(silencioso = false){
+async function load(silencioso = false, forcar = false){
   // Durante a edição/salvamento, não fazemos GET automático.
   // Isso evita uma leitura concorrente do Apps Script enquanto o POST está gravando.
   const editModal = document.getElementById('adminEditModal');
-  if(adminSaving || (editModal && editModal.classList.contains('show'))) return;
+  if(!forcar && (adminSaving || (editModal && editModal.classList.contains('show')))) return;
   if(carregando) return;
   carregando = true;
   const status = document.getElementById("status");
@@ -1348,7 +1348,7 @@ async function saveAdminEdit(){
     // O salvamento só é considerado concluído depois de buscar novamente a planilha.
     // Enquanto isso o botão permanece bloqueado, evitando uma segunda operação concorrente.
     closeAdminEdit();
-    await load(true);
+    await load(true, true);
     renderAdminMembers();
 
     // Reabre uma confirmação curta sem deixar uma edição antiga pendurada.
