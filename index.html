@@ -1280,6 +1280,8 @@ function closeAdminEdit(){
 }
 
 async function saveAdminEdit(){
+  if(adminSaving) return;
+
   const id=document.getElementById('adminEditId').value.trim();
   const nome=document.getElementById('adminEditNome').value.trim();
   const msg=document.getElementById('adminEditMessage');
@@ -1302,7 +1304,7 @@ async function saveAdminEdit(){
     categoria:document.getElementById('adminEditCategoria').value.trim(),
     status:document.getElementById('adminEditStatus').value,
     observacoes:document.getElementById('adminEditObservacoes').value.trim(),
-    requestId: Date.now() + '-' + Math.random().toString(36).slice(2)
+    requestId: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).slice(2))
   };
 
   adminSaving=true;
@@ -1311,14 +1313,20 @@ async function saveAdminEdit(){
   msg.textContent='';
   msg.className='form-message';
 
-  // Cada salvamento recebe uma URL única.
-  // Assim nenhuma execução anterior, cache ou atualização automática reutiliza a mesma chamada.
   const baseUrl=String(FILIACAO_API_URL||'').trim();
-  const sep=baseUrl.includes('?') ? '&' : '?';
-  const saveUrl=baseUrl + sep + 'edit=' + Date.now() + '&r=' + Math.random().toString(36).slice(2);
+  if(!baseUrl){
+    adminSaving=false;
+    btn.disabled=false;
+    btn.textContent='SALVAR ALTERAÇÕES';
+    msg.textContent='A URL do Google Apps Script não foi configurada.';
+    msg.className='form-message error';
+    return;
+  }
 
+  const sep=baseUrl.includes('?') ? '&' : '?';
+  const saveUrl=baseUrl + sep + 'edit=' + encodeURIComponent(payload.requestId);
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),30000);
+  const timeout=setTimeout(()=>controller.abort(),45000);
 
   try{
     const response=await fetch(saveUrl,{
@@ -1330,61 +1338,29 @@ async function saveAdminEdit(){
       body:JSON.stringify(payload)
     });
 
-    if(!response.ok){
-      throw new Error('Erro HTTP ' + response.status + ' ao salvar.');
-    }
-
     const text=await response.text();
-    let result;
-    try{
-      result=JSON.parse(text);
-    }catch(e){
-      throw new Error('O servidor respondeu, mas não retornou um JSON válido.');
+    let result={};
+    try{ result=JSON.parse(text); }catch(_){ throw new Error('O servidor respondeu, mas não retornou um JSON válido.'); }
+    if(!response.ok || result.ok !== true){
+      throw new Error(result.message || ('Erro HTTP ' + response.status + ' ao salvar.'));
     }
 
-    if(!result || result.ok !== true){
-      throw new Error((result && result.message) || 'Não foi possível atualizar o filiado.');
-    }
-
-    // Atualiza a lista local com o que acabou de ser confirmado pelo servidor.
-    const index=membros.findIndex(m => String(m.id||'').trim() === id);
-    if(index !== -1){
-      membros[index]={
-        ...membros[index],
-        nome:payload.nome,
-        sexo:payload.sexo,
-        nascimento:payload.nascimento,
-        cidade:payload.cidade,
-        estado:payload.estado,
-        categoria:payload.categoria,
-        status:payload.status,
-        observacoes:payload.observacoes
-      };
-      ultimoConteudo=JSON.stringify(membros);
-    }
-
-    render();
+    // O salvamento só é considerado concluído depois de buscar novamente a planilha.
+    // Enquanto isso o botão permanece bloqueado, evitando uma segunda operação concorrente.
+    closeAdminEdit();
+    await load(true);
     renderAdminMembers();
 
-    msg.textContent=result.message || 'Filiado atualizado com sucesso.';
-    msg.className='form-message success';
-
-    setTimeout(()=>{
-      closeAdminEdit();
-      // Só depois de fechar a edição fazemos uma nova leitura.
-      load(true);
-    },700);
-
+    // Reabre uma confirmação curta sem deixar uma edição antiga pendurada.
+    msg.textContent='';
   }catch(err){
     console.error('Erro ao salvar edição:',err);
-
     if(err && err.name==='AbortError'){
       msg.textContent='O salvamento demorou demais. Tente novamente.';
     }else{
       msg.textContent=(err && err.message) ? err.message : 'Erro ao salvar as alterações.';
     }
     msg.className='form-message error';
-
   }finally{
     clearTimeout(timeout);
     adminSaving=false;
@@ -1392,6 +1368,7 @@ async function saveAdminEdit(){
     btn.textContent='SALVAR ALTERAÇÕES';
   }
 }
+
 function setAdminSection(section){
   const map={members:'adminMembers',new:'adminNew',finance:'adminFinance',reports:'adminReports',settings:'adminSettings'};
   Object.entries(map).forEach(([key,id])=>document.getElementById(id).classList.toggle('show',key===section));
