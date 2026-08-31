@@ -1147,6 +1147,26 @@ function showFormMessage(text, type){
 }
 function digits(v){ return String(v||"").replace(/\D/g,""); }
 function upperText(v){ return String(v ?? "").trim().toLocaleUpperCase("pt-BR"); }
+function isValidCPF(value){
+  const cpf=digits(value);
+  if(cpf.length!==11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  const calc=(base)=>{
+    let sum=0;
+    for(let i=0;i<base.length;i++) sum+=Number(base[i])*(base.length+1-i);
+    const mod=(sum*10)%11;
+    return mod===10?0:mod;
+  };
+  return calc(cpf.slice(0,9))===Number(cpf[9]) && calc(cpf.slice(0,10))===Number(cpf[10]);
+}
+function isValidPhone(value){ const n=digits(value); return n.length===10 || n.length===11; }
+const BRAZIL_STATES=[
+  ["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],["SE","Sergipe"],["TO","Tocantins"]
+];
+function fillStateSelect(select, selected=''){
+  if(!select) return;
+  select.innerHTML='<option value="">SELECIONE O ESTADO</option>'+BRAZIL_STATES.map(([uf,name])=>`<option value="${uf}">${uf} - ${name}</option>`).join('');
+  select.value=String(selected||'').toUpperCase();
+}
 
 
 document.getElementById("openJoin").addEventListener("click", openJoinModal);
@@ -1185,6 +1205,16 @@ document.getElementById("joinForm").addEventListener("submit", async e=>{
   }
 
   const form=e.currentTarget;
+  if(!isValidCPF(form.cpf.value)){
+    showFormMessage("Informe um CPF válido.", "error");
+    form.cpf.focus();
+    return;
+  }
+  if(!isValidPhone(form.telefone.value)){
+    showFormMessage("Informe um telefone com DDD e 10 ou 11 números.", "error");
+    form.telefone.focus();
+    return;
+  }
   const data={
     nome: upperText(form.nome.value),
     sexo: upperText(form.sexo.value),
@@ -1223,6 +1253,18 @@ document.getElementById("joinForm").addEventListener("submit", async e=>{
 });
 
 
+
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const adminState=document.getElementById('adminEditEstado');
+  if(adminState){
+    fillStateSelect(adminState);
+    adminState.addEventListener('change', ()=>{
+      document.getElementById('adminEditCidade').value='';
+      document.getElementById('adminEditCidadeList').innerHTML='';
+    });
+  }
+});
 
 // ================= ÁREA RESTRITA - PRIMEIRA ETAPA =================
 // IMPORTANTE: o login real será validado no Google Apps Script.
@@ -1265,9 +1307,10 @@ function openAdminEdit(id){
   document.getElementById('adminEditNome').value=m.nome||'';
   document.getElementById('adminEditSexo').value=m.sexo||'';
   document.getElementById('adminEditNascimento').value=adminDateValue(m.nascimento);
+  fillStateSelect(document.getElementById('adminEditEstado'), m.estado||'');
   document.getElementById('adminEditCidade').value=m.cidade||'';
-  document.getElementById('adminEditEstado').value=m.estado||'';
-  document.getElementById('adminEditCategoria').value=m.categoria||'';
+  document.getElementById('adminEditCidadeList').innerHTML=(m.cidade||'') ? `<option value="${escapeHTML(upperText(m.cidade))}">` : '';
+  document.getElementById('adminEditCategoria').value=upperText(m.categoria||'');
   document.getElementById('adminEditStatus').value=m.status||'Ativo';
   document.getElementById('adminEditObservacoes').value=m.observacoes||'';
   document.getElementById('adminEditMessage').textContent='';
@@ -1293,15 +1336,23 @@ async function saveAdminEdit(){
     return;
   }
 
+  const estado=upperText(document.getElementById('adminEditEstado').value);
+  const cidade=upperText(document.getElementById('adminEditCidade').value);
+  const categoria=upperText(document.getElementById('adminEditCategoria').value);
+  if(!estado || !cidade || !['TITULAR','DEPENDENTE'].includes(categoria)){
+    msg.textContent='Estado, cidade e uma categoria válida (TITULAR ou DEPENDENTE) são obrigatórios.';
+    msg.className='form-message error';
+    return;
+  }
   const payload={
     action:'editarFiliado',
     id:id,
     nome:nome,
     sexo:document.getElementById('adminEditSexo').value.trim(),
     nascimento:document.getElementById('adminEditNascimento').value,
-    cidade:document.getElementById('adminEditCidade').value.trim(),
-    estado:document.getElementById('adminEditEstado').value.trim(),
-    categoria:document.getElementById('adminEditCategoria').value.trim(),
+    cidade:cidade,
+    estado:estado,
+    categoria:categoria,
     status:document.getElementById('adminEditStatus').value,
     observacoes:document.getElementById('adminEditObservacoes').value.trim(),
     requestId: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).slice(2))
@@ -1422,9 +1473,10 @@ document.addEventListener("visibilitychange", () => {
       <div class="full"><label>Nome completo</label><input id="adminEditNome"></div>
       <div><label>Sexo</label><input id="adminEditSexo"></div>
       <div><label>Data de nascimento</label><input id="adminEditNascimento" type="date"></div>
-      <div><label>Cidade</label><input id="adminEditCidade"></div>
-      <div><label>Estado</label><input id="adminEditEstado"></div>
-      <div><label>Categoria</label><input id="adminEditCategoria"></div>
+      <div><label>Estado</label><select id="adminEditEstado"></select></div>
+      <div><label>Cidade</label><input id="adminEditCidade" list="adminEditCidadeList" placeholder="Digite para selecionar"></div>
+      <datalist id="adminEditCidadeList"></datalist>
+      <div><label>Categoria</label><select id="adminEditCategoria"><option value="">SELECIONE</option><option value="TITULAR">TITULAR</option><option value="DEPENDENTE">DEPENDENTE</option></select></div>
       <div><label>Status</label><select id="adminEditStatus"><option value="Ativo">Ativo</option><option value="Inativo">Inativo</option><option value="Pendente">Pendente</option></select></div>
       <div class="full"><label>Observações</label><textarea id="adminEditObservacoes"></textarea></div>
     </div>
