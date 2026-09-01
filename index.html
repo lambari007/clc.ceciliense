@@ -1559,13 +1559,42 @@ function setAdminSection(section){
   Object.entries(map).forEach(([key,id])=>document.getElementById(id).classList.toggle('show',key===section));
   document.querySelectorAll('.admin-tab').forEach(b=>b.classList.toggle('active',b.dataset.admin===section));
 }
-document.getElementById("adminLoginBtn").addEventListener("click",()=>{
+document.getElementById("adminLoginBtn").addEventListener("click", async ()=>{
   const user=document.getElementById("adminUser").value.trim();
-  const pass=document.getElementById("adminPass").value.trim();
+  const pass=document.getElementById("adminPass").value;
   const msg=document.getElementById("adminLoginMessage");
-  // Liberação visual temporária: a autenticação definitiva será feita no Apps Script.
+  const btn=document.getElementById("adminLoginBtn");
   if(!user || !pass){ msg.textContent='Informe usuário e senha para continuar.'; msg.className='form-message error'; return; }
-  sessionStorage.setItem("clcAdminPreview","1"); msg.textContent=''; showAdminPanel(); renderAdminMembers();
+  if(!FILIACAO_API_URL){ msg.textContent='A URL do servidor não foi configurada.'; msg.className='form-message error'; return; }
+  btn.disabled=true;
+  btn.textContent='VALIDANDO...';
+  msg.textContent='';
+  msg.className='form-message';
+  try{
+    const response=await fetch(FILIACAO_API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'login',usuario:user,senha:pass})
+    });
+    const text=await response.text();
+    let result={};
+    try{ result=JSON.parse(text); }catch(_){ throw new Error('O servidor retornou uma resposta inválida.'); }
+    if(!response.ok || result.ok!==true) throw new Error(result.message||'Usuário ou senha inválidos.');
+    sessionStorage.setItem('clcAdminPreview','1');
+    sessionStorage.setItem('clcAdminUser',JSON.stringify(result.user||{usuario:user,nome:user}));
+    msg.textContent='';
+    showAdminPanel();
+    renderAdminMembers();
+  }catch(e){
+    console.error('Erro no login:',e);
+    sessionStorage.removeItem('clcAdminPreview');
+    sessionStorage.removeItem('clcAdminUser');
+    msg.textContent=e.message||'Não foi possível validar o acesso.';
+    msg.className='form-message error';
+  }finally{
+    btn.disabled=false;
+    btn.textContent='ENTRAR';
+  }
 });
 document.getElementById("adminPass").addEventListener("keydown",e=>{if(e.key==='Enter')document.getElementById("adminLoginBtn").click();});
 document.getElementById("adminLogout").addEventListener("click",()=>{sessionStorage.removeItem("clcAdminPreview");document.getElementById("adminPanel").classList.remove("show");document.getElementById("adminLoginBox").classList.remove("hidden");document.getElementById("adminPass").value='';});
