@@ -1222,11 +1222,13 @@ document.getElementById("jtelefone").addEventListener("input", e=>{
 });
 
 // Mantém os campos textuais do formulário visualmente em LETRAS MAIÚSCULAS.
-["jnome","jcidade","jrua","jbairro"].forEach(id => {
+// Mantém letras maiúsculas sem remover espaços enquanto a pessoa digita.
+// O trim() é aplicado apenas no momento de salvar o formulário.
+["jnome","jrua","jbairro"].forEach(id => {
   const field = document.getElementById(id);
   if(field) field.addEventListener("input", e => {
     const start = e.target.selectionStart;
-    e.target.value = upperText(e.target.value);
+    e.target.value = String(e.target.value ?? "").toLocaleUpperCase("pt-BR");
     if(start != null) e.target.setSelectionRange(start, start);
   });
 });
@@ -1378,13 +1380,29 @@ async function deleteAdminMember(id){
   const m=membros.find(x=>String(x.id)===String(id));
   const label=m?`${m.nome} (${formatMemberId(m.id)})`:formatMemberId(id);
   if(!confirm(`Tem certeza que deseja excluir o filiado ${label}? Esta ação não poderá ser desfeita.`)) return;
+
+  // URL direta do Apps Script para evitar dependência de variável local.
+  const deleteEndpoint='https://script.google.com/macros/s/AKfycbytgj4l5Gf11pJAjMoKmzhi06DplzjXmLHjKyiXAc7KjMAj-EJz-08iuLODvauXxKVnSw/exec';
+
   try{
-    const response=await fetch(baseUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'excluirFiliado',id:String(id)})});
-    const result=await response.json();
+    const response=await fetch(deleteEndpoint,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      cache:'no-store',
+      redirect:'follow',
+      body:JSON.stringify({action:'excluirFiliado',id:String(id)})
+    });
+    const text=await response.text();
+    let result={};
+    try{result=JSON.parse(text)}catch(_){throw new Error('O servidor não retornou uma resposta válida.');}
     if(!response.ok||result.ok!==true) throw new Error(result.message||'Não foi possível excluir o filiado.');
-    await load(true,true);renderAdminMembers();
+    await load(true,true);
+    renderAdminMembers();
     alert('Filiado excluído com sucesso.');
-  }catch(e){console.error(e);alert(e.message||'Erro ao excluir o filiado.');}
+  }catch(e){
+    console.error(e);
+    alert(e.message||'Erro ao excluir o filiado.');
+  }
 }
 
 function openAdminEdit(id){
