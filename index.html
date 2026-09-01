@@ -603,10 +603,13 @@ footer{background:#061d10;padding:22px;border-top:2px solid rgba(185,160,90,.6)}
         <div class="form-field"><label for="jcpf">CPF *</label><input id="jcpf" name="cpf" inputmode="numeric" placeholder="000.000.000-00" required></div>
         <div class="form-field"><label for="jnascimento">Data de nascimento *</label><input id="jnascimento" name="nascimento" type="date" required></div>
         <div class="form-field"><label for="jtelefone">Telefone / WhatsApp *</label><input id="jtelefone" name="telefone" inputmode="tel" placeholder="(00) 00000-0000" required></div>
-        <div class="form-field"><label for="jcidade">Cidade *</label><input id="jcidade" name="cidade" required></div>
-        <div class="form-field"><label for="jestado">Estado (UF) *</label><select id="jestado" name="estado" required><option value="">UF</option><option>SC</option><option>PR</option><option>RS</option><option>SP</option><option>Outro</option></select></div>
+        <div class="form-field"><label for="jestado">Estado *</label><select id="jestado" name="estado" required><option value="">SELECIONE O ESTADO</option></select></div>
+        <div class="form-field"><label for="jcidade">Cidade *</label><select id="jcidade" name="cidade" required disabled><option value="">SELECIONE O ESTADO PRIMEIRO</option></select></div>
         <div class="form-field"><label for="jrua">Rua / endereço *</label><input id="jrua" name="rua" required></div>
         <div class="form-field"><label for="jbairro">Bairro *</label><input id="jbairro" name="bairro" required></div>
+        <div class="form-field"><label for="jcategoria">Categoria *</label><select id="jcategoria" name="categoria" required><option value="">SELECIONE</option><option value="TITULAR">TITULAR</option><option value="DEPENDENTE">DEPENDENTE</option></select></div>
+        <div class="form-field"><label for="jpagamento">Meio de pagamento *</label><select id="jpagamento" name="pagamento" required><option value="">SELECIONE</option><option value="PIX">PIX</option><option value="CARTÃO">CARTÃO</option><option value="DINHEIRO">DINHEIRO</option><option value="A COMBINAR">A COMBINAR</option></select></div>
+        <div class="form-field full"><label>Foto do filiado</label><input id="jfoto" type="file" accept="image/*"><small>Opcional — a foto será enviada junto com a filiação.</small></div>
       </div>
 
       <div class="terms">
@@ -1228,6 +1231,26 @@ document.getElementById("jtelefone").addEventListener("input", e=>{
   });
 });
 
+
+(function(){
+  const ufMap={AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
+  const st=document.getElementById('jestado'), city=document.getElementById('jcidade');
+  if(st&&city){
+    Object.entries(ufMap).forEach(([uf,name])=>{const o=document.createElement('option');o.value=uf;o.textContent=`${uf} — ${name}`;st.appendChild(o)});
+    st.addEventListener('change',async()=>{
+      city.disabled=true; city.innerHTML='<option value="">CARREGANDO CIDADES...</option>';
+      if(!st.value){city.innerHTML='<option value="">SELECIONE O ESTADO PRIMEIRO</option>';return;}
+      try{
+        const r=await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/'+encodeURIComponent(st.value)+'/municipios');
+        const cities=await r.json(); city.innerHTML='<option value="">SELECIONE A CIDADE</option>';
+        cities.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).forEach(c=>{const o=document.createElement('option');o.value=upperText(c.nome);o.textContent=c.nome;city.appendChild(o)});
+        city.disabled=false;
+      }catch(_){city.innerHTML='<option value="">NÃO FOI POSSÍVEL CARREGAR AS CIDADES</option>';}
+    });
+  }
+})();
+function publicFileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file)})}
+
 document.getElementById("joinForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const endpoint=String(FILIACAO_API_URL||"").trim();
@@ -1257,6 +1280,8 @@ document.getElementById("joinForm").addEventListener("submit", async e=>{
     estado: upperText(form.estado.value),
     rua: upperText(form.rua.value),
     bairro: upperText(form.bairro.value),
+    categoria: upperText(form.categoria.value),
+    pagamento: upperText(form.pagamento.value),
     status: "Inativo",
     origem: "Site CLC",
     termos: true
@@ -1268,6 +1293,8 @@ document.getElementById("joinForm").addEventListener("submit", async e=>{
 
   try{
     // text/plain evita preflight CORS e funciona com Web App do Apps Script.
+    const photo=document.getElementById('jfoto')?.files?.[0];
+    if(photo) data.fotoUpload={name:photo.name,type:photo.type,data:await publicFileToBase64(photo)};
     const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(data)});
     const txt=await r.text();
     let result={};
@@ -1275,6 +1302,7 @@ document.getElementById("joinForm").addEventListener("submit", async e=>{
     if(!r.ok || result.ok===false) throw new Error(result.message||"Não foi possível registrar a solicitação.");
     showFormMessage("Solicitação enviada com sucesso! Seu cadastro foi registrado como INATIVO. A equipe do CLC entrará em contato pelo telefone informado.", "success");
     form.reset();
+    const city=document.getElementById('jcidade'); if(city){city.disabled=true;city.innerHTML='<option value="">SELECIONE O ESTADO PRIMEIRO</option>';}
     setTimeout(closeJoinModal,3500);
   }catch(err){
     console.error(err);
@@ -1398,6 +1426,7 @@ async function saveAdminEdit(){
   const payload={
     action:'editarFiliado',
     id:id,
+    newId:id,
     nome:nome,
     cpf:cpf,
     telefone:telefone,
@@ -1550,7 +1579,7 @@ if(!baseUrl)return showMsg('A URL do Google Apps Script não foi configurada.','
   <div class="admin-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="adminEditTitle">
     <button type="button" class="admin-edit-close" onclick="closeAdminEdit()" aria-label="Fechar">×</button>
     <h3 id="adminEditTitle">✏️ EDITAR FILIADO</h3>
-    <input id="adminEditId" type="hidden">
+    <div class="full"><label>ID do filiado</label><input id="adminEditId" inputmode="numeric" placeholder="ID"></div>
     <div class="admin-grid">
       <div class="full"><label>Nome completo</label><input id="adminEditNome"></div>
       <div><label>CPF</label><input id="adminEditCPF" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>

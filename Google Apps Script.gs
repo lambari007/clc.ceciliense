@@ -24,18 +24,23 @@ function novoFiliado_(data){
   if(!sheet) throw new Error('A aba "'+ABA_DESTINO+'" não foi encontrada.');
   let headers=sheet.getRange(1,1,1,Math.max(sheet.getLastColumn(),1)).getDisplayValues()[0].map(normalize_);
   const aliases={
-    nome:['nome','nome completo','filiado','lacador','laçador'],sexo:['sexo','genero','gênero'],cpf:['cpf'],nascimento:['data de nascimento','nascimento','dt nascimento'],telefone:['telefone','celular','whatsapp','fone'],cidade:['cidade','municipio','município'],estado:['estado','uf'],rua:['rua','endereco','endereço'],bairro:['bairro'],categoria:['categoria','modalidade'],status:['status','situação','situacao'],observacoes:['observacoes','observações','observacao','observação'],foto:['foto url','link da foto','foto','imagem','url da foto'],origem:['origem'],termos:['termos','aceite dos termos','aceite'],solicitacao:['data solicitacao','data solicitação','solicitacao','solicitação']
+    id:['id associado','id','codigo','código','numero associado','número associado'],
+    nome:['nome','nome completo','filiado','lacador','laçador'],sexo:['sexo','genero','gênero'],cpf:['cpf'],nascimento:['data de nascimento','nascimento','dt nascimento'],telefone:['telefone','celular','whatsapp','fone'],cidade:['cidade','municipio','município'],estado:['estado','uf'],rua:['rua','endereco','endereço'],bairro:['bairro'],categoria:['categoria','modalidade'],status:['status','situação','situacao'],observacoes:['observacoes','observações','observacao','observação'],foto:['foto url','link da foto','foto','imagem','url da foto'],origem:['origem'],termos:['termos','aceite dos termos','aceite'],solicitacao:['data solicitacao','data solicitação','solicitacao','solicitação'],pagamento:['pagamento','meio de pagamento','forma de pagamento']
   };
   Object.keys(aliases).forEach(f=>{if(findColumn_(headers,aliases[f])===-1){const title=prettyHeader_(f);sheet.getRange(1,sheet.getLastColumn()+1).setValue(title);headers.push(normalize_(title));}});
+  const idCol=findColumn_(headers,aliases.id);
+  if(idCol===-1) throw new Error('Não encontrei a coluna de ID. A coluna de ID deve existir na planilha Cadastro.');
+  const novoId=String(data.id||generateNextId_(sheet,idCol+1)).trim();
+  if(!novoId) throw new Error('Não foi possível gerar o ID do filiado.');
   let fotoUrl='';
   if(data.fotoUpload&&data.fotoUpload.data) fotoUrl=uploadFoto_(data.fotoUpload, data.nome, cpf);
   const row=new Array(headers.length).fill('');
-  const values={nome:upperText_(data.nome),sexo:upperText_(data.sexo),cpf:data.cpf,nascimento:data.nascimento,telefone:data.telefone,cidade:upperText_(data.cidade),estado:upperText_(data.estado),rua:upperText_(data.rua),bairro:upperText_(data.bairro),categoria:upperText_(data.categoria||''),status:upperText_(data.status||'ATIVO'),observacoes:data.observacoes||'',foto:fotoUrl,origem:'ÁREA RESTRITA',termos:'CADASTRO ADMINISTRATIVO',solicitacao:new Date()};
+  const values={id:novoId,nome:upperText_(data.nome),sexo:upperText_(data.sexo),cpf:data.cpf,nascimento:data.nascimento,telefone:data.telefone,cidade:upperText_(data.cidade),estado:upperText_(data.estado),rua:upperText_(data.rua),bairro:upperText_(data.bairro),categoria:upperText_(data.categoria||''),status:upperText_(data.status||'ATIVO'),observacoes:data.observacoes||'',foto:fotoUrl,origem:'ÁREA RESTRITA',termos:'CADASTRO ADMINISTRATIVO',solicitacao:new Date(),pagamento:upperText_(data.pagamento||'')};
   Object.keys(values).forEach(k=>setField_(row,headers,aliases[k],values[k]));
   const rowNum=sheet.getLastRow()+1;sheet.getRange(rowNum,1,1,row.length).setValues([row]);
   const nc=sheet.getRange(rowNum,1,1,row.length);nc.setBackground('#F4CCCC');nc.setFontColor('#9C0006');
   const birth=findColumn_(headers,aliases.nascimento);if(birth!==-1)sheet.getRange(rowNum,birth+1).setNumberFormat('dd/mm/yyyy');
-  SpreadsheetApp.flush();return json_({ok:true,message:'Filiado salvo com sucesso.',foto:fotoUrl});
+  SpreadsheetApp.flush();return json_({ok:true,message:'Filiado salvo com sucesso.',id:novoId,foto:fotoUrl});
 }
 
 function doGet(){
@@ -51,17 +56,22 @@ function doGet(){
 
 function editarFiliado_(data){
   const lock=LockService.getScriptLock();let locked=false;
-  try{lock.waitLock(30000);locked=true;const id=String(data.id||'').trim();if(!id)return json_({ok:false,message:'ID do filiado não informado.'});
+  try{lock.waitLock(30000);locked=true;const id=String(data.id||'').trim();const newId=String(data.newId||id).trim();if(!id)return json_({ok:false,message:'ID do filiado não informado.'});
     const sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_DESTINO);if(!sheet)throw new Error('A aba Cadastro não foi encontrada.');
     const lastRow=sheet.getLastRow(),lastColumn=sheet.getLastColumn(),headers=sheet.getRange(1,1,1,lastColumn).getDisplayValues()[0].map(normalize_);
     const aliases={id:['id associado','id','codigo','código','numero associado','número associado'],nome:['nome completo','nome'],sexo:['sexo'],cpf:['cpf'],nascimento:['data de nascimento','data nascimento','nascimento','data de nascer'],telefone:['telefone','celular','whatsapp','fone'],cidade:['cidade','municipio','município'],estado:['estado','uf'],categoria:['categoria','modalidade'],status:['status','situacao','situação'],observacoes:['observacoes','observações','observacao','observação']};
     const cols={};Object.keys(aliases).forEach(k=>cols[k]=findColumn_(headers,aliases[k]));if(cols.id===-1)throw new Error('Não encontrei a coluna de ID.');
     const ids=sheet.getRange(2,cols.id+1,lastRow-1,1).getDisplayValues().flat(),i=ids.findIndex(v=>String(v).trim()===id);if(i===-1)throw new Error('Filiado não encontrado.');const row=i+2;
+    if(newId!==id){
+      const duplicate=ids.some((v,idx)=>idx!==i&&String(v).trim()===newId);
+      if(duplicate) return json_({ok:false,message:'Este novo ID já está em uso por outro filiado.'});
+      sheet.getRange(row,cols.id+1).setValue(newId);
+    }
     if(data.cpf!==undefined&&!isValidCPF_(String(data.cpf).replace(/\D/g,'')))return json_({ok:false,message:'CPF inválido.'});
     const set=(k,v)=>{if(cols[k]!==-1)sheet.getRange(row,cols[k]+1).setValue(v)};
     set('nome',upperText_(data.nome));set('sexo',upperText_(data.sexo));set('cpf',String(data.cpf||'').trim());set('telefone',String(data.telefone||'').trim());set('cidade',upperText_(data.cidade));set('estado',upperText_(data.estado));set('categoria',upperText_(data.categoria));set('status',upperText_(data.status));set('observacoes',upperText_(data.observacoes));
     if(cols.nascimento!==-1&&data.nascimento!==undefined){const p=String(data.nascimento||'').split('-'),c=sheet.getRange(row,cols.nascimento+1);if(p.length===3){c.setValue(new Date(+p[0],+p[1]-1,+p[2]));c.setNumberFormat('dd/mm/yyyy')}else if(!data.nascimento)c.clearContent();}
-    SpreadsheetApp.flush();return json_({ok:true,message:'Filiado atualizado com sucesso.',id,updatedAt:new Date().toISOString()});
+    SpreadsheetApp.flush();return json_({ok:true,message:'Filiado atualizado com sucesso.',id:newId,updatedAt:new Date().toISOString()});
   }catch(err){console.error(err);return json_({ok:false,message:String(err.message||err)})}finally{if(locked)lock.releaseLock()}
 }
 
@@ -75,7 +85,22 @@ function normalize_(v){return String(v||'').toLowerCase().normalize('NFD').repla
 function findColumn_(headers,aliases){const list=aliases.map(normalize_).filter(Boolean);const exact=headers.findIndex(h=>list.includes(h));if(exact!==-1)return exact;const safe=list.filter(a=>a.length>=3);return headers.findIndex(h=>safe.some(a=>h.indexOf(a)!==-1))}
 function setField_(row,headers,aliases,value){const c=findColumn_(headers,aliases);if(c!==-1)row[c]=value}
 function upperText_(v){return String(v==null?'':v).trim().toUpperCase()}
-function prettyHeader_(f){return ({nome:'Nome Completo',sexo:'Sexo',cpf:'CPF',nascimento:'Data de Nascimento',telefone:'Telefone',cidade:'Cidade',estado:'Estado',rua:'Rua / Endereço',bairro:'Bairro',categoria:'Categoria',status:'Status',observacoes:'Observações',foto:'Foto URL',origem:'Origem',termos:'Aceite dos Termos',solicitacao:'Data Solicitação'})[f]||f}
+function prettyHeader_(f){return ({nome:'Nome Completo',sexo:'Sexo',cpf:'CPF',nascimento:'Data de Nascimento',telefone:'Telefone',cidade:'Cidade',estado:'Estado',rua:'Rua / Endereço',bairro:'Bairro',categoria:'Categoria',status:'Status',observacoes:'Observações',foto:'Foto URL',origem:'Origem',termos:'Aceite dos Termos',solicitacao:'Data Solicitação',pagamento:'Meio de Pagamento'})[f]||f}
+function generateNextId_(sheet,idColumn){
+  const last=sheet.getLastRow();
+  if(last<2) return '1';
+  const values=sheet.getRange(2,idColumn,last-1,1).getDisplayValues().flat();
+  let max=0;
+  values.forEach(v=>{
+    const s=String(v||'').trim();
+    const m=s.match(/\d+/g);
+    if(m){
+      const n=parseInt(m.join(''),10);
+      if(Number.isFinite(n)&&n>max) max=n;
+    }
+  });
+  return String(max+1);
+}
 function json_(obj){return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON)}
 function autorizarDrive() {
   const pasta = DriveApp.getFolderById(PASTA_FOTOS_ID);
