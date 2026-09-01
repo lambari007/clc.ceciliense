@@ -1348,9 +1348,10 @@ function renderAdminMembers(){
     <td>${escapeHTML(m.cidade||'-')}</td>
     <td>${escapeHTML(m.categoria||'-')}</td>
     <td><span class="status-pill">${escapeHTML(m.status||'Ativo')}</span></td>
-    <td><button type="button" class="admin-edit-btn" data-edit-id="${escapeHTML(String(m.id||''))}">✏️ EDITAR</button></td>
+    <td><div class="admin-row-actions"><button type="button" class="admin-edit-btn" data-edit-id="${escapeHTML(String(m.id||''))}">✏️ EDITAR</button><button type="button" class="admin-delete-btn" data-delete-id="${escapeHTML(String(m.id||''))}">🗑️ EXCLUIR</button></div></td>
   </tr>`).join('');
   body.querySelectorAll('[data-edit-id]').forEach(btn=>btn.addEventListener('click',()=>openAdminEdit(btn.dataset.editId)));
+  body.querySelectorAll('[data-delete-id]').forEach(btn=>btn.addEventListener('click',()=>deleteAdminMember(btn.dataset.deleteId)));
 }
 
 function adminDateValue(value){
@@ -1362,11 +1363,35 @@ function adminDateValue(value){
   return '';
 }
 
+function formatMemberId(value){
+  const raw=String(value||'').trim().toUpperCase();
+  if(!raw) return '';
+  if(/^CLC[- ]?T[- ]?\d+$/i.test(raw)){
+    const n=(raw.match(/\d+/)||[''])[0];
+    return 'CLC-T-'+String(parseInt(n,10)).padStart(3,'0');
+  }
+  if(/^\d+$/.test(raw)) return 'CLC-T-'+String(parseInt(raw,10)).padStart(3,'0');
+  return raw;
+}
+
+async function deleteAdminMember(id){
+  const m=membros.find(x=>String(x.id)===String(id));
+  const label=m?`${m.nome} (${formatMemberId(m.id)})`:formatMemberId(id);
+  if(!confirm(`Tem certeza que deseja excluir o filiado ${label}? Esta ação não poderá ser desfeita.`)) return;
+  try{
+    const response=await fetch(baseUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'excluirFiliado',id:String(id)})});
+    const result=await response.json();
+    if(!response.ok||result.ok!==true) throw new Error(result.message||'Não foi possível excluir o filiado.');
+    await load(true,true);renderAdminMembers();
+    alert('Filiado excluído com sucesso.');
+  }catch(e){console.error(e);alert(e.message||'Erro ao excluir o filiado.');}
+}
+
 function openAdminEdit(id){
   const m=membros.find(x=>String(x.id)===String(id));
   if(!m){ alert('Não foi possível localizar este filiado.'); return; }
   adminEditingId=String(m.id||'');
-  document.getElementById('adminEditId').value=adminEditingId;
+  document.getElementById('adminEditId').value=formatMemberId(adminEditingId);
   document.getElementById('adminEditNome').value=m.nome||'';
   document.getElementById('adminEditSexo').value=m.sexo||'';
   document.getElementById('adminEditNascimento').value=adminDateValue(m.nascimento);
@@ -1425,8 +1450,8 @@ async function saveAdminEdit(){
   }
   const payload={
     action:'editarFiliado',
-    id:id,
-    newId:id,
+    id:adminEditingId,
+    newId:formatMemberId(id),
     nome:nome,
     cpf:cpf,
     telefone:telefone,
@@ -1579,7 +1604,7 @@ if(!baseUrl)return showMsg('A URL do Google Apps Script não foi configurada.','
   <div class="admin-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="adminEditTitle">
     <button type="button" class="admin-edit-close" onclick="closeAdminEdit()" aria-label="Fechar">×</button>
     <h3 id="adminEditTitle">✏️ EDITAR FILIADO</h3>
-    <div class="full"><label>ID do filiado</label><input id="adminEditId" inputmode="numeric" placeholder="ID"></div>
+    <div class="full"><label>ID do filiado</label><input id="adminEditId" placeholder="CLC-T-001"></div>
     <div class="admin-grid">
       <div class="full"><label>Nome completo</label><input id="adminEditNome"></div>
       <div><label>CPF</label><input id="adminEditCPF" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></div>
@@ -1600,7 +1625,7 @@ if(!baseUrl)return showMsg('A URL do Google Apps Script não foi configurada.','
 <style>
 .admin-edit-btn{border:0;border-radius:8px;padding:8px 11px;font-weight:800;cursor:pointer;background:#173d2d;color:#fff;white-space:nowrap}
 .admin-edit-modal{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.58);padding:18px;overflow:auto;align-items:center;justify-content:center}
-.admin-edit-modal.show{display:flex}.admin-edit-dialog{position:relative;width:min(680px,100%);background:#fff;border-radius:16px;padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.28)}
+.admin-row-actions{display:flex;gap:8px;flex-wrap:wrap}.admin-delete-btn{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;background:#b42318;color:#fff;font-weight:700}.admin-edit-modal.show{display:flex}.admin-edit-dialog{position:relative;width:min(680px,100%);background:#fff;border-radius:16px;padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.28)}
 .admin-edit-dialog h3{margin:0 0 18px}.admin-edit-close{position:absolute;right:14px;top:10px;border:0;background:transparent;font-size:30px;cursor:pointer}.admin-edit-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}.admin-action.secondary{background:#777}@media(max-width:600px){.admin-edit-dialog{padding:18px 14px;border-radius:12px}.admin-edit-actions{flex-direction:column}.admin-edit-actions .admin-action{width:100%}.admin-table th:nth-child(5),.admin-table td:nth-child(5){white-space:nowrap}}
 </style>
 </body>

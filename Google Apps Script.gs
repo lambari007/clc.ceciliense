@@ -8,6 +8,7 @@ function doPost(e){
     const data=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');
     if(data.action==='login') return login_(data);
     if(data.action==='editarFiliado') return editarFiliado_(data);
+    if(data.action==='excluirFiliado') return excluirFiliado_(data);
     return novoFiliado_(data);
   }catch(err){console.error(err);return json_({ok:false,message:String(err.message||err)})}
 }
@@ -75,6 +76,29 @@ function editarFiliado_(data){
   }catch(err){console.error(err);return json_({ok:false,message:String(err.message||err)})}finally{if(locked)lock.releaseLock()}
 }
 
+function excluirFiliado_(data){
+  const lock=LockService.getScriptLock();let locked=false;
+  try{
+    lock.waitLock(30000);locked=true;
+    const id=String(data.id||'').trim();
+    if(!id) return json_({ok:false,message:'ID do filiado não informado.'});
+    const sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_DESTINO);
+    if(!sheet) throw new Error('A aba Cadastro não foi encontrada.');
+    const lastRow=sheet.getLastRow(), lastColumn=sheet.getLastColumn();
+    if(lastRow<2) return json_({ok:false,message:'Não há filiados para excluir.'});
+    const headers=sheet.getRange(1,1,1,lastColumn).getDisplayValues()[0].map(normalize_);
+    const idCol=findColumn_(headers,['id associado','id','codigo','código','numero associado','número associado']);
+    if(idCol===-1) throw new Error('Não encontrei a coluna de ID.');
+    const ids=sheet.getRange(2,idCol+1,lastRow-1,1).getDisplayValues().flat();
+    const i=ids.findIndex(v=>String(v).trim()===id);
+    if(i===-1) return json_({ok:false,message:'Filiado não encontrado.'});
+    sheet.deleteRow(i+2);
+    SpreadsheetApp.flush();
+    return json_({ok:true,message:'Filiado excluído com sucesso.'});
+  }catch(err){console.error(err);return json_({ok:false,message:String(err.message||err)})}
+  finally{if(locked)lock.releaseLock()}
+}
+
 function uploadFoto_(upload,nome,cpf){
   const folder=DriveApp.getFolderById(PASTA_FOTOS_ID);const bytes=Utilities.base64Decode(String(upload.data));const mime=String(upload.type||'image/jpeg');const ext=mime.includes('png')?'png':mime.includes('webp')?'webp':'jpg';const safe=upperText_(nome).replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');const blob=Utilities.newBlob(bytes,mime,(safe||cpf||'FOTO')+'_'+Date.now()+'.'+ext);const file=folder.createFile(blob);file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);return 'https://drive.google.com/uc?export=view&id='+file.getId();
 }
@@ -88,19 +112,20 @@ function upperText_(v){return String(v==null?'':v).trim().toUpperCase()}
 function prettyHeader_(f){return ({nome:'Nome Completo',sexo:'Sexo',cpf:'CPF',nascimento:'Data de Nascimento',telefone:'Telefone',cidade:'Cidade',estado:'Estado',rua:'Rua / Endereço',bairro:'Bairro',categoria:'Categoria',status:'Status',observacoes:'Observações',foto:'Foto URL',origem:'Origem',termos:'Aceite dos Termos',solicitacao:'Data Solicitação',pagamento:'Meio de Pagamento'})[f]||f}
 function generateNextId_(sheet,idColumn){
   const last=sheet.getLastRow();
-  if(last<2) return '1';
+  if(last<2) return 'CLC-T-001';
   const values=sheet.getRange(2,idColumn,last-1,1).getDisplayValues().flat();
   let max=0;
   values.forEach(v=>{
-    const s=String(v||'').trim();
+    const s=String(v||'').trim().toUpperCase();
     const m=s.match(/\d+/g);
     if(m){
-      const n=parseInt(m.join(''),10);
+      const n=parseInt(m[m.length-1],10);
       if(Number.isFinite(n)&&n>max) max=n;
     }
   });
-  return String(max+1);
+  return 'CLC-T-'+String(max+1).padStart(3,'0');
 }
+
 function json_(obj){return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON)}
 function autorizarDrive() {
   const pasta = DriveApp.getFolderById(PASTA_FOTOS_ID);
