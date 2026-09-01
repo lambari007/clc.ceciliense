@@ -573,7 +573,7 @@ footer{background:#061d10;padding:22px;border-top:2px solid rgba(185,160,90,.6)}
         </div>
       </div>
 
-      <div id="adminFinance" class="admin-section"><div class="admin-card"><h3>💰 FINANCEIRO</h3><div class="admin-kpis"><div class="kpi">RECEBIDO NO MÊS<b>R$ 0,00</b></div><div class="kpi">EM ABERTO<b>R$ 0,00</b></div><div class="kpi">PAGAMENTOS<b>0</b></div><div class="kpi">PENDÊNCIAS<b>0</b></div></div><div class="admin-finance-box"><b>Próxima etapa:</b> criar uma aba financeira na planilha e ligar cada pagamento a um filiado. O painel poderá registrar mensalidade de R$ 50, pagamento anual, PIX, dinheiro e outros lançamentos.</div></div></div>
+      <div id="adminFinance" class="admin-section"><div class="admin-card"><h3>💰 FINANCEIRO</h3><div class="admin-kpis"><div class="kpi">RECEBIDO NO MÊS<b>R$ 0,00</b></div><div class="kpi">EM ABERTO<b>R$ 0,00</b></div><div class="kpi">PAGAMENTOS<b>0</b></div><div class="kpi">PENDÊNCIAS<b>0</b></div></div><div class="admin-finance-box"><b>Mercado Pago:</b> pagamentos iniciados pelo site serão registrados automaticamente na aba <b>Financeiro</b> da planilha. Após a confirmação do pagamento, o filiado passa de <b>INATIVO</b> para <b>ATIVO</b>.</div></div></div>
       <div id="adminReports" class="admin-section"><div class="admin-card"><h3>📊 RELATÓRIOS</h3><p>Resumo de filiados ativos, inativos, pendentes, recebimentos e inadimplência será exibido aqui.</p></div></div>
       <div id="adminSettings" class="admin-section"><div class="admin-card"><h3>⚙️ CONFIGURAÇÕES</h3><p>Usuários administrativos, valores de mensalidade e regras do sistema serão configurados nesta área.</p><div class="admin-note">O login desta primeira versão é apenas uma etapa visual de desenvolvimento. Antes de colocar a área administrativa em uso, vamos validar o acesso no Google Apps Script para que usuário e senha não fiquem expostos no HTML.</div></div></div>
     </div>
@@ -608,7 +608,7 @@ footer{background:#061d10;padding:22px;border-top:2px solid rgba(185,160,90,.6)}
         <div class="form-field"><label for="jrua">Rua / endereço *</label><input id="jrua" name="rua" required></div>
         <div class="form-field"><label for="jbairro">Bairro *</label><input id="jbairro" name="bairro" required></div>
         <div class="form-field"><label for="jcategoria">Categoria *</label><select id="jcategoria" name="categoria" required><option value="">SELECIONE</option><option value="TITULAR">TITULAR</option><option value="DEPENDENTE">DEPENDENTE</option></select></div>
-        <div class="form-field"><label for="jpagamento">Meio de pagamento *</label><select id="jpagamento" name="pagamento" required><option value="">SELECIONE</option><option value="PIX">PIX</option><option value="CARTÃO">CARTÃO</option><option value="DINHEIRO">DINHEIRO</option><option value="A COMBINAR">A COMBINAR</option></select></div>
+        <div class="form-field"><label for="jpagamento">Meio de pagamento *</label><select id="jpagamento" name="pagamento" required><option value="">SELECIONE</option><option value="PIX">PIX — MERCADO PAGO</option><option value="CARTÃO">CARTÃO — MERCADO PAGO</option><option value="DINHEIRO">DINHEIRO</option><option value="A COMBINAR">A COMBINAR</option></select></div>
         <div class="form-field full"><label>Foto do filiado</label><input id="jfoto" type="file" accept="image/*"><small>Opcional — a foto será enviada junto com a filiação.</small></div>
       </div>
 
@@ -1297,11 +1297,20 @@ document.getElementById("joinForm").addEventListener("submit", async e=>{
     // text/plain evita preflight CORS e funciona com Web App do Apps Script.
     const photo=document.getElementById('jfoto')?.files?.[0];
     if(photo) data.fotoUpload={name:photo.name,type:photo.type,data:await publicFileToBase64(photo)};
+    const usaMercadoPago=["PIX","CARTÃO","CARTAO"].includes(data.pagamento);
+    if(usaMercadoPago) data.action="createCheckout";
     const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(data)});
     const txt=await r.text();
     let result={};
     try{ result=JSON.parse(txt); }catch(_){}
     if(!r.ok || result.ok===false) throw new Error(result.message||"Não foi possível registrar a solicitação.");
+    if(usaMercadoPago){
+      const checkout=result.init_point||result.sandbox_init_point;
+      if(!checkout) throw new Error("O Mercado Pago não retornou o link de pagamento.");
+      showFormMessage("Cadastro criado! Abrindo o Mercado Pago para você concluir o pagamento...", "success");
+      setTimeout(()=>{ window.location.href=checkout; },700);
+      return;
+    }
     showFormMessage("Solicitação enviada com sucesso! Seu cadastro foi registrado como INATIVO. A equipe do CLC entrará em contato pelo telefone informado.", "success");
     form.reset();
     const city=document.getElementById('jcidade'); if(city){city.disabled=true;city.innerHTML='<option value="">SELECIONE O ESTADO PRIMEIRO</option>';}

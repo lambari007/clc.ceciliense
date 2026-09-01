@@ -1,9 +1,16 @@
-VERSÃO CORRIGIDA
+VERSÃO COM INTEGRAÇÃO MERCADO PAGO
 
-A URL do Google Apps Script foi atualizada para a implantação atual (/exec).
+1. Atualize o Google Apps Script com o arquivo "Google Apps Script.gs" desta versão.
+2. No Apps Script, abra Configurações do projeto > Propriedades do script.
+3. Crie a propriedade: MP_ACCESS_TOKEN
+4. Cole como valor o Access Token de PRODUÇÃO do Mercado Pago. Não coloque esse token no index.html.
+5. Salve e faça uma nova implantação como Aplicativo da Web.
+6. Execute a função testarMercadoPago() uma vez no Apps Script para conferir a conexão.
 
-Se ainda aparecer Failed to fetch, confira na implantação do Apps Script:
-- Executar como: Eu
-- Quem tem acesso: Qualquer pessoa
+Fluxo:
+- PIX ou CARTÃO: o site cria o cadastro INATIVO, cria a preferência no Mercado Pago e redireciona ao checkout.
+- O lançamento é criado automaticamente na aba Financeiro como PENDENTE.
+- Quando o Mercado Pago notificar um pagamento aprovado, o Financeiro passa para PAGO e o filiado para ATIVO.
+- DINHEIRO e A COMBINAR continuam como solicitação manual.
 
-Depois de salvar/implantar o Apps Script, aguarde alguns segundos e atualize o site com Ctrl+F5.
+IMPORTANTE: o Access Token deve ficar somente nas Propriedades do Script.

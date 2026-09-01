@@ -1,14 +1,20 @@
 /** CLC - FILIAÇÕES E ÁREA RESTRITA */
 const ABA_DESTINO='Cadastro';
 const ABA_USUARIOS='USUÁRIOS';
+const ABA_FINANCEIRO='Financeiro';
 const PASTA_FOTOS_ID='10Mok68v3HQfvnqib-PaZMOq4Y5H_ZGbB';
+const VALOR_FILIACAO=50.00;
+const MP_ACCESS_TOKEN_PROPERTY='MP_ACCESS_TOKEN';
 
 function doPost(e){
   try{
-    const data=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');
+    const raw=(e&&e.postData&&e.postData.contents)||'{}';
+    const data=JSON.parse(raw||'{}');
+    if((e&&e.parameter&&e.parameter.mp_webhook==='1') || data.action==='mpWebhook') return receberWebhookMercadoPago_(data);
     if(data.action==='login') return login_(data);
     if(data.action==='editarFiliado') return editarFiliado_(data);
     if(data.action==='excluirFiliado') return excluirFiliado_(data);
+    if(data.action==='createCheckout') return criarCheckoutFiliacao_(data);
     return novoFiliado_(data);
   }catch(err){console.error(err);return json_({ok:false,message:String(err.message||err)})}
 }
@@ -36,7 +42,7 @@ function novoFiliado_(data){
   let fotoUrl='';
   if(data.fotoUpload&&data.fotoUpload.data) fotoUrl=uploadFoto_(data.fotoUpload, data.nome, cpf);
   const row=new Array(headers.length).fill('');
-  const values={id:novoId,nome:upperText_(data.nome),sexo:upperText_(data.sexo),cpf:data.cpf,nascimento:data.nascimento,telefone:data.telefone,cidade:upperText_(data.cidade),estado:upperText_(data.estado),rua:upperText_(data.rua),bairro:upperText_(data.bairro),categoria:upperText_(data.categoria||''),status:upperText_(data.status||'ATIVO'),observacoes:data.observacoes||'',foto:fotoUrl,origem:'ÁREA RESTRITA',termos:'CADASTRO ADMINISTRATIVO',solicitacao:new Date(),pagamento:upperText_(data.pagamento||'')};
+  const values={id:novoId,nome:upperText_(data.nome),sexo:upperText_(data.sexo),cpf:data.cpf,nascimento:data.nascimento,telefone:data.telefone,cidade:upperText_(data.cidade),estado:upperText_(data.estado),rua:upperText_(data.rua),bairro:upperText_(data.bairro),categoria:upperText_(data.categoria||''),status:upperText_(data.status||'ATIVO'),observacoes:data.observacoes||'',foto:fotoUrl,origem:upperText_(data.origem||'ÁREA RESTRITA'),termos:data.termos?'ACEITO':'CADASTRO ADMINISTRATIVO',solicitacao:new Date(),pagamento:upperText_(data.pagamento||'')};
   Object.keys(values).forEach(k=>setField_(row,headers,aliases[k],values[k]));
   const rowNum=sheet.getLastRow()+1;sheet.getRange(rowNum,1,1,row.length).setValues([row]);
   const nc=sheet.getRange(rowNum,1,1,row.length);nc.setBackground('#F4CCCC');nc.setFontColor('#9C0006');
@@ -138,4 +144,165 @@ function testarUploadDrive() {
     'Teste de gravação no Google Drive.'
   );
   Logger.log(arquivo.getUrl());
+}
+
+
+/** ================= MERCADO PAGO / FINANCEIRO ================= */
+function criarCheckoutFiliacao_(data){
+  const pagamento=upperText_(data.pagamento||'');
+  if(['PIX','CARTÃO','CARTAO'].indexOf(pagamento)===-1) return json_({ok:false,message:'Checkout disponível apenas para PIX ou CARTÃO.'});
+
+  const required=['nome','sexo','cpf','nascimento','telefone','cidade','estado','rua','bairro'];
+  for(const k of required) if(!String(data[k]||'').trim()) return json_({ok:false,message:'Campo obrigatório ausente: '+k});
+  const cpf=String(data.cpf).replace(/\D/g,'');
+  const tel=String(data.telefone).replace(/\D/g,'');
+  if(!isValidCPF_(cpf)) return json_({ok:false,message:'CPF inválido.'});
+  if(tel.length<10||tel.length>11) return json_({ok:false,message:'Telefone inválido.'});
+
+  const token=getMercadoPagoToken_();
+  const lock=LockService.getScriptLock();
+  lock.waitLock(30000);
+  try{
+    const ss=SpreadsheetApp.getActiveSpreadsheet();
+    const cadastro=ss.getSheetByName(ABA_DESTINO);
+    if(!cadastro) throw new Error('A aba "'+ABA_DESTINO+'" não foi encontrada.');
+    const headers=cadastro.getRange(1,1,1,Math.max(cadastro.getLastColumn(),1)).getDisplayValues()[0].map(normalize_);
+    const idCol=findColumn_(headers,['id associado','id','codigo','código','numero associado','número associado']);
+    if(idCol===-1) throw new Error('Não encontrei a coluna de ID na aba Cadastro.');
+    const novoId=generateNextId_(cadastro,idCol+1);
+    const externalReference='CLC-'+novoId+'-'+Date.now();
+
+    const preference={
+      items:[{title:'Filiação Clube de Laço Ceciliense',quantity:1,unit_price:VALOR_FILIACAO,currency_id:'BRL'}],
+      external_reference:externalReference,
+      metadata:{clc_filiado_id:novoId,tipo:'FILIACAO'},
+      payer:{name:String(data.nome||'').trim(),identification:{type:'CPF',number:cpf}},
+      notification_url:ScriptApp.getService().getUrl()+'?mp_webhook=1'
+    };
+    const response=UrlFetchApp.fetch('https://api.mercadopago.com/checkout/preferences',{
+      method:'post',contentType:'application/json',
+      headers:{Authorization:'Bearer '+token},
+      payload:JSON.stringify(preference),muteHttpExceptions:true
+    });
+    const code=response.getResponseCode();
+    const body=JSON.parse(response.getContentText()||'{}');
+    if(code<200||code>=300) throw new Error('Mercado Pago: '+(body.message||body.error||response.getContentText()));
+
+    data.id=novoId;
+    data.status='INATIVO';
+    data.origem=data.origem||'SITE CLC';
+    data.termos=true;
+    salvarNovoFiliadoSemLock_(data);
+    registrarFinanceiro_({
+      filiadoId:novoId,nome:data.nome,descricao:'FILIAÇÃO CLC',valor:VALOR_FILIACAO,
+      status:'PENDENTE',meio:pagamento,paymentId:'',preferenceId:String(body.id||''),externalReference:externalReference
+    });
+    SpreadsheetApp.flush();
+    return json_({ok:true,id:novoId,preference_id:body.id,init_point:body.init_point,sandbox_init_point:body.sandbox_init_point});
+  }finally{lock.releaseLock()}
+}
+
+function salvarNovoFiliadoSemLock_(data){
+  const sheet=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_DESTINO);
+  let headers=sheet.getRange(1,1,1,Math.max(sheet.getLastColumn(),1)).getDisplayValues()[0].map(normalize_);
+  const aliases={
+    id:['id associado','id','codigo','código','numero associado','número associado'],
+    nome:['nome','nome completo','filiado','lacador','laçador'],sexo:['sexo','genero','gênero'],cpf:['cpf'],nascimento:['data de nascimento','nascimento','dt nascimento'],telefone:['telefone','celular','whatsapp','fone'],cidade:['cidade','municipio','município'],estado:['estado','uf'],rua:['rua','endereco','endereço'],bairro:['bairro'],categoria:['categoria','modalidade'],status:['status','situação','situacao'],observacoes:['observacoes','observações','observacao','observação'],foto:['foto url','link da foto','foto','imagem','url da foto'],origem:['origem'],termos:['termos','aceite dos termos','aceite'],solicitacao:['data solicitacao','data solicitação','solicitacao','solicitação'],pagamento:['pagamento','meio de pagamento','forma de pagamento']
+  };
+  Object.keys(aliases).forEach(f=>{if(findColumn_(headers,aliases[f])===-1){const title=prettyHeader_(f);sheet.getRange(1,sheet.getLastColumn()+1).setValue(title);headers.push(normalize_(title));}});
+  let fotoUrl='';
+  if(data.fotoUpload&&data.fotoUpload.data) fotoUrl=uploadFoto_(data.fotoUpload,data.nome,String(data.cpf).replace(/\D/g,''));
+  const row=new Array(headers.length).fill('');
+  const values={id:String(data.id),nome:upperText_(data.nome),sexo:upperText_(data.sexo),cpf:data.cpf,nascimento:data.nascimento,telefone:data.telefone,cidade:upperText_(data.cidade),estado:upperText_(data.estado),rua:upperText_(data.rua),bairro:upperText_(data.bairro),categoria:upperText_(data.categoria||''),status:'INATIVO',observacoes:data.observacoes||'',foto:fotoUrl,origem:upperText_(data.origem||'SITE CLC'),termos:'ACEITO',solicitacao:new Date(),pagamento:upperText_(data.pagamento||'')};
+  Object.keys(values).forEach(k=>setField_(row,headers,aliases[k],values[k]));
+  const rowNum=sheet.getLastRow()+1;sheet.getRange(rowNum,1,1,row.length).setValues([row]);
+  sheet.getRange(rowNum,1,1,row.length).setBackground('#F4CCCC').setFontColor('#9C0006');
+  const birth=findColumn_(headers,aliases.nascimento);if(birth!==-1)sheet.getRange(rowNum,birth+1).setNumberFormat('dd/mm/yyyy');
+}
+
+function getMercadoPagoToken_(){
+  const token=PropertiesService.getScriptProperties().getProperty(MP_ACCESS_TOKEN_PROPERTY);
+  if(!token) throw new Error('Falta configurar o Access Token do Mercado Pago nas Propriedades do Script.');
+  return token.trim();
+}
+
+function getFinanceiroSheet_(){
+  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  let sh=ss.getSheetByName(ABA_FINANCEIRO);
+  const headers=['Data','ID Associado','Nome','Descrição','Valor','Status','Meio de Pagamento','Mercado Pago Payment ID','Preference ID','External Reference','Criado em','Atualizado em'];
+  if(!sh){sh=ss.insertSheet(ABA_FINANCEIRO);sh.getRange(1,1,1,headers.length).setValues([headers]);sh.setFrozenRows(1);}
+  else if(sh.getLastRow()===0){sh.getRange(1,1,1,headers.length).setValues([headers]);}
+  return sh;
+}
+
+function registrarFinanceiro_(d){
+  const sh=getFinanceiroSheet_();
+  sh.appendRow([new Date(),d.filiadoId||'',upperText_(d.nome||''),d.descricao||'FILIAÇÃO CLC',Number(d.valor||0),upperText_(d.status||'PENDENTE'),upperText_(d.meio||''),String(d.paymentId||''),String(d.preferenceId||''),String(d.externalReference||''),new Date(),new Date()]);
+  sh.getRange(sh.getLastRow(),1).setNumberFormat('dd/mm/yyyy hh:mm');
+  sh.getRange(sh.getLastRow(),5).setNumberFormat('R$ #,##0.00');
+}
+
+function receberWebhookMercadoPago_(event){
+  try{
+    const type=String(event.type||event.topic||'').toLowerCase();
+    const paymentId=String((event.data&&event.data.id)||event.id||'');
+    if(!paymentId || (type && type!=='payment')) return json_({ok:true,ignored:true});
+    const payment=consultarPagamentoMercadoPago_(paymentId);
+    atualizarPagamentoNoFinanceiro_(payment);
+    return json_({ok:true});
+  }catch(err){console.error(err);return json_({ok:false,message:String(err.message||err)})}
+}
+
+function consultarPagamentoMercadoPago_(paymentId){
+  const response=UrlFetchApp.fetch('https://api.mercadopago.com/v1/payments/'+encodeURIComponent(paymentId),{
+    method:'get',headers:{Authorization:'Bearer '+getMercadoPagoToken_()},muteHttpExceptions:true
+  });
+  const body=JSON.parse(response.getContentText()||'{}');
+  if(response.getResponseCode()<200||response.getResponseCode()>=300) throw new Error('Não foi possível consultar o pagamento no Mercado Pago.');
+  return body;
+}
+
+function atualizarPagamentoNoFinanceiro_(payment){
+  const external=String(payment.external_reference||'');
+  if(!external) return;
+  const sh=getFinanceiroSheet_();
+  const values=sh.getDataRange().getDisplayValues();
+  if(values.length<2) return;
+  const headers=values[0].map(normalize_);
+  const cExt=headers.indexOf(normalize_('External Reference'));
+  const cStatus=headers.indexOf(normalize_('Status'));
+  const cPayment=headers.indexOf(normalize_('Mercado Pago Payment ID'));
+  const cUpdated=headers.indexOf(normalize_('Atualizado em'));
+  const rowIndex=values.slice(1).findIndex(r=>String(r[cExt]||'')===external);
+  if(rowIndex===-1) return;
+  const row=rowIndex+2;
+  const status=String(payment.status||'').toUpperCase();
+  if(cStatus!==-1) sh.getRange(row,cStatus+1).setValue(status==='APPROVED'?'PAGO':status);
+  if(cPayment!==-1) sh.getRange(row,cPayment+1).setValue(String(payment.id||''));
+  if(cUpdated!==-1) sh.getRange(row,cUpdated+1).setValue(new Date());
+  if(status==='APPROVED') ativarFiliadoPorExternalReference_(external);
+  SpreadsheetApp.flush();
+}
+
+function ativarFiliadoPorExternalReference_(external){
+  const m=String(external).match(/^CLC-(.+)-\d+$/);
+  if(!m) return;
+  const id=m[1];
+  const sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABA_DESTINO);
+  const headers=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(normalize_);
+  const idCol=findColumn_(headers,['id associado','id','codigo','código','numero associado','número associado']);
+  const statusCol=findColumn_(headers,['status','situação','situacao']);
+  if(idCol===-1||statusCol===-1) return;
+  const ids=sh.getRange(2,idCol+1,Math.max(sh.getLastRow()-1,0),1).getDisplayValues().flat();
+  const i=ids.findIndex(v=>String(v).trim()===id);
+  if(i===-1) return;
+  const row=i+2;
+  sh.getRange(row,statusCol+1).setValue('ATIVO');
+  sh.getRange(row,1,1,sh.getLastColumn()).setBackground('#D9EAD3').setFontColor('#274E13');
+}
+
+function testarMercadoPago(){
+  const token=getMercadoPagoToken_();
+  const r=UrlFetchApp.fetch('https://api.mercadopago.com/users/me',{headers:{Authorization:'Bearer '+token},muteHttpExceptions:true});
+  Logger.log(r.getResponseCode()+' '+r.getContentText());
 }
